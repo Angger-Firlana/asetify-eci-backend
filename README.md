@@ -49,14 +49,43 @@ Command setup:
 
 ```bash
 php spark db:create asetify_eci
-php spark migrate
+php spark migrate --all
 php spark db:seed DatabaseSeeder
+```
+
+Jika ingin langsung menyiapkan akun development untuk login API:
+
+```bash
+php spark db:seed DevelopmentUserSeeder
+```
+
+Jika repo sudah sempat dimigrate sebelum endpoint upload foto ditambahkan, jalankan lagi:
+
+```bash
+php spark migrate --all
+```
+
+## Testing
+
+Feature test API sekarang sudah mencakup authorization untuk foto aset existing.
+
+Jika memakai MySQL untuk PHPUnit, siapkan database test terpisah sesuai `.env`:
+
+```bash
+php spark db:create "asetify-eci-be"
+```
+
+Jalankan test:
+
+```bash
+vendor\bin\phpunit tests\feature\Api\AssetPhotoManagementTest.php
 ```
 
 ## Tabel Yang Dibuat
 
 Migration saat ini mencakup:
 
+- tabel auth dari CodeIgniter Shield
 - `asset_types`
 - `asset_categories`
 - `brands`
@@ -74,8 +103,17 @@ Seeder awal mengisi contoh data untuk:
 - brand
 - lokasi
 
+Seeder development user menambahkan akun berikut:
+
+- `admin` atau `admin@asetify.test` / `Password123!`
+- `supervisor01` atau `supervisor@asetify.test` / `Password123!`
+- `scanner01` atau `scanner@asetify.test` / `Password123!`
+
 ## Catatan
 
-- Kolom seperti `created_by`, `updated_by`, `uploaded_by`, `scanned_by`, `moved_by`, dan `changed_by` sudah disiapkan untuk integrasi auth, tetapi foreign key ke tabel user belum dipasang karena package auth `CodeIgniter Shield` belum diinstal di repo ini.
+- Package auth yang dipakai adalah `CodeIgniter Shield` dengan role `scanner`, `supervisor`, dan `admin`.
+- Upload foto sementara disimpan di `writable/uploads/tmp`, lalu dipindah ke `writable/uploads/assets` saat asset berhasil dibuat.
 - `asset_photos.file_size_bytes` dibatasi dengan check constraint `<= 1048576` sesuai requirement foto maksimal 1 MB.
 - `assets.serial_number` dibuat unik secara database.
+- Fondasi API yang sudah tersedia saat ini:
+  `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, dan endpoint `GET /api/v1/masters/*`.
