@@ -10,93 +10,45 @@ class MasterDataSeeder extends Seeder
     {
         $now = gmdate('Y-m-d H:i:s');
 
-        $assetTypes = [
-            [
-                'code'       => 'device',
-                'name'       => 'Device',
-                'is_active'  => 1,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'code'       => 'peripheral',
-                'name'       => 'Peripheral',
-                'is_active'  => 1,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'code'       => 'network',
-                'name'       => 'Network',
-                'is_active'  => 1,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-        ];
-
-        $this->db->table('asset_types')->ignore(true)->insertBatch($assetTypes);
-
-        $typeMap = $this->db->table('asset_types')
-            ->select('id, code')
-            ->get()
-            ->getResultArray();
-
-        $typeIds = [];
-        foreach ($typeMap as $type) {
-            $typeIds[$type['code']] = (int) $type['id'];
-        }
-
         $assetCategories = [
             [
-                'asset_type_id' => $typeIds['device'] ?? null,
-                'code'          => 'pc',
-                'name'          => 'PC',
-                'is_active'     => 1,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'code'       => 'pc',
+                'name'       => 'PC',
+                'is_active'  => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'asset_type_id' => $typeIds['device'] ?? null,
-                'code'          => 'laptop',
-                'name'          => 'Laptop',
-                'is_active'     => 1,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'code'       => 'laptop',
+                'name'       => 'Laptop',
+                'is_active'  => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'asset_type_id' => $typeIds['peripheral'] ?? null,
-                'code'          => 'printer',
-                'name'          => 'Printer',
-                'is_active'     => 1,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'code'       => 'printer',
+                'name'       => 'Printer',
+                'is_active'  => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'asset_type_id' => $typeIds['network'] ?? null,
-                'code'          => 'jetdirect',
-                'name'          => 'Jetdirect',
-                'is_active'     => 1,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'code'       => 'jetdirect',
+                'name'       => 'Jetdirect',
+                'is_active'  => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
             [
-                'asset_type_id' => $typeIds['peripheral'] ?? null,
-                'code'          => 'monitor',
-                'name'          => 'Monitor',
-                'is_active'     => 1,
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'code'       => 'monitor',
+                'name'       => 'Monitor',
+                'is_active'  => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
         ];
 
-        $assetCategories = array_values(array_filter(
-            $assetCategories,
-            static fn (array $category): bool => $category['asset_type_id'] !== null
-        ));
-
-        if ($assetCategories !== []) {
-            $this->db->table('asset_categories')->ignore(true)->insertBatch($assetCategories);
-        }
+        $this->db->table('asset_categories')->ignore(true)->insertBatch($assetCategories);
 
         $brands = [
             ['code' => 'dell', 'name' => 'Dell', 'is_active' => 1, 'created_at' => $now, 'updated_at' => $now],

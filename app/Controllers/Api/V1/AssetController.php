@@ -47,7 +47,7 @@ class AssetController extends BaseApiController
                 'can_edit'                   => $user?->inGroup('scanner', 'supervisor', 'admin') ?? false,
                 'can_edit_serial_number'     => $user?->inGroup('supervisor', 'admin') ?? false,
                 'can_manage_existing_photos' => $user?->inGroup('supervisor', 'admin') ?? false,
-                'asset'                      => $asset,
+                'asset'                      => $this->formatDuplicateAssetSummary($asset),
             ]
         );
     }
@@ -74,7 +74,6 @@ class AssetController extends BaseApiController
 
         $rules = [
             'serial_number'       => 'required|string|max_length[150]',
-            'asset_type_id'       => 'required|integer',
             'asset_category_id'   => 'required|integer',
             'brand_id'            => 'required|integer',
             'model_name'          => 'permit_empty|string|max_length[150]',
@@ -108,7 +107,7 @@ class AssetController extends BaseApiController
 
             return $this->respondSuccess(
                 'Asset created successfully',
-                $asset,
+                $this->formatAssetDetail($asset),
                 ResponseInterface::HTTP_CREATED
             );
         } catch (RuntimeException $e) {
@@ -145,22 +144,30 @@ class AssetController extends BaseApiController
         $sortDir = strtolower((string) ($this->request->getGet('sort_dir') ?: 'desc')) === 'asc' ? 'ASC' : 'DESC';
         $sortCol = $sortByWhitelist[$sortBy] ?? 'assets.created_at';
 
-        $builder = model(AssetModel::class)
-            ->select([
-                'assets.id',
-                'assets.serial_number',
-                'brands.name AS brand',
-                'asset_categories.name AS asset_category',
-                'source_locations.name AS source_location',
-                'current_locations.name AS current_location',
-                'assets.condition_status',
-                'primary_photo.id AS photo_id',
-            ])
-            ->join('brands', 'brands.id = assets.brand_id', 'left')
-            ->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left')
-            ->join('locations source_locations', 'source_locations.id = assets.source_location_id', 'left')
-            ->join('locations current_locations', 'current_locations.id = assets.current_location_id', 'left')
-            ->join('asset_photos primary_photo', 'primary_photo.asset_id = assets.id AND primary_photo.is_primary = 1', 'left');
+        $builder = model(AssetModel::class)->builder();
+        $builder->select([
+            'assets.id',
+            'assets.serial_number',
+            'assets.asset_category_id',
+            'assets.brand_id',
+            'assets.source_location_id',
+            'assets.current_location_id',
+            'brands.name AS brand',
+            'brands.name AS brand_name',
+            'asset_categories.name AS asset_category',
+            'asset_categories.name AS asset_category_name',
+            'source_locations.name AS source_location',
+            'source_locations.name AS source_location_name',
+            'current_locations.name AS current_location',
+            'current_locations.name AS current_location_name',
+            'assets.condition_status',
+            'primary_photo.id AS photo_id',
+        ]);
+        $builder->join('brands', 'brands.id = assets.brand_id', 'left');
+        $builder->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left');
+        $builder->join('locations source_locations', 'source_locations.id = assets.source_location_id', 'left');
+        $builder->join('locations current_locations', 'current_locations.id = assets.current_location_id', 'left');
+        $builder->join('asset_photos primary_photo', 'primary_photo.asset_id = assets.id AND primary_photo.is_primary = 1', 'left');
 
         $search = trim((string) $this->request->getGet('search'));
         if ($search !== '') {
@@ -175,7 +182,6 @@ class AssetController extends BaseApiController
         }
 
         $this->applyExactFilter($builder, 'serial_number', 'assets.serial_number');
-        $this->applyExactFilter($builder, 'asset_type_id', 'assets.asset_type_id');
         $this->applyExactFilter($builder, 'asset_category_id', 'assets.asset_category_id');
         $this->applyExactFilter($builder, 'brand_id', 'assets.brand_id');
         $this->applyExactFilter($builder, 'source_location_id', 'assets.source_location_id');
@@ -199,15 +205,14 @@ class AssetController extends BaseApiController
         $items = $builder
             ->orderBy($sortCol, $sortDir)
             ->limit($perPage, $offset)
-            ->findAll();
+            ->get()
+            ->getResultArray();
 
         $items = array_map(function (array $item): array {
-            $item['photo_url'] = $item['photo_id'] !== null
-                ? site_url('api/v1/assets/' . $item['id'] . '/download-photo/' . $item['photo_id'])
-                : null;
+            $item['photo_url'] = $this->buildAssetPhotoUrl($item);
             unset($item['photo_id']);
 
-            return $item;
+            return $this->attachAssetRelations($item);
         }, $items);
 
         return $this->respondSuccess(
@@ -248,7 +253,7 @@ class AssetController extends BaseApiController
             'can_manage_existing_photos' => $authz->canManageExistingPhotos($user),
         ];
 
-        return $this->respondSuccess('Asset fetched', $asset);
+        return $this->respondSuccess('Asset fetched', $this->formatAssetDetail($asset));
     }
 
     public function update(int $assetId): ResponseInterface
@@ -269,7 +274,6 @@ class AssetController extends BaseApiController
 
         $rules = [
             'serial_number'       => 'permit_empty|string|max_length[150]',
-            'asset_type_id'       => 'permit_empty|integer',
             'asset_category_id'   => 'permit_empty|integer',
             'brand_id'            => 'permit_empty|integer',
             'model_name'          => 'permit_empty|string|max_length[150]',
@@ -294,7 +298,7 @@ class AssetController extends BaseApiController
         try {
             $asset = (new AssetService())->updateAsset($assetId, $payload, $user);
 
-            return $this->respondSuccess('Asset updated successfully', $asset);
+            return $this->respondSuccess('Asset updated successfully', $this->formatAssetDetail($asset));
         } catch (RuntimeException $e) {
             $message = $e->getMessage();
             $lower   = strtolower($message);
@@ -458,7 +462,7 @@ class AssetController extends BaseApiController
         return $this->response->download($path, null)->setFileName($photo['file_name']);
     }
 
-    private function applyExactFilter(AssetModel $builder, string $queryParam, string $column): void
+    private function applyExactFilter(object $builder, string $queryParam, string $column): void
     {
         $value = $this->request->getGet($queryParam);
         if ($value !== null && $value !== '') {
@@ -478,5 +482,58 @@ class AssetController extends BaseApiController
 
             return $photo;
         }, $photos);
+    }
+
+    private function formatDuplicateAssetSummary(?array $asset): ?array
+    {
+        if ($asset === null) {
+            return null;
+        }
+
+        $asset['photo_url'] = $this->buildAssetPhotoUrl($asset);
+        unset($asset['photo_id']);
+
+        return $this->attachAssetRelations($asset);
+    }
+
+    private function formatAssetDetail(array $asset): array
+    {
+        return $this->attachAssetRelations($asset);
+    }
+
+    private function buildAssetPhotoUrl(array $item): ?string
+    {
+        $assetId = isset($item['id']) ? (int) $item['id'] : null;
+        $photoId = $item['photo_id'] ?? null;
+
+        if ($assetId === null || $assetId <= 0 || $photoId === null || $photoId === '') {
+            return null;
+        }
+
+        return site_url('api/v1/assets/' . $assetId . '/download-photo/' . $photoId);
+    }
+
+    private function attachAssetRelations(array $asset): array
+    {
+        $asset['relations'] = [
+            'brand' => $this->buildRelation($asset, 'brand_id', 'brand_name', 'brand'),
+            'asset_category' => $this->buildRelation($asset, 'asset_category_id', 'asset_category_name', 'asset_category'),
+            'source_location' => $this->buildRelation($asset, 'source_location_id', 'source_location_name', 'source_location'),
+            'current_location' => $this->buildRelation($asset, 'current_location_id', 'current_location_name', 'current_location'),
+        ];
+
+        return $asset;
+    }
+
+    private function buildRelation(array $asset, string $idKey, string $nameKey, ?string $fallbackNameKey = null): ?array
+    {
+        if (! array_key_exists($idKey, $asset) && ! array_key_exists($nameKey, $asset) && ($fallbackNameKey === null || ! array_key_exists($fallbackNameKey, $asset))) {
+            return null;
+        }
+
+        return [
+            'id' => isset($asset[$idKey]) && $asset[$idKey] !== null ? (int) $asset[$idKey] : null,
+            'name' => $asset[$nameKey] ?? ($fallbackNameKey !== null ? ($asset[$fallbackNameKey] ?? null) : null),
+        ];
     }
 }

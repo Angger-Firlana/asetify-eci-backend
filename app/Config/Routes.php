@@ -25,7 +25,6 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('assets/(:num)/audit-logs', 'HistoryController::assetAuditLogs/$1');
         $routes->get('assets/(:num)/download-photo/(:num)', 'AssetController::downloadPhoto/$1/$2');
 
-        $routes->get('masters/asset-types', 'MasterDataController::assetTypes');
         $routes->get('masters/asset-categories', 'MasterDataController::assetCategories');
         $routes->get('masters/brands', 'MasterDataController::brands');
         $routes->get('masters/locations', 'MasterDataController::locations');

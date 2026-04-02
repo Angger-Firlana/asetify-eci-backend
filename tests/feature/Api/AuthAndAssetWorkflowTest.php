@@ -39,8 +39,28 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertFalse($json['data']['can_edit_serial_number']);
         $this->assertFalse($json['data']['can_manage_existing_photos']);
         $this->assertSame($asset['serial_number'], $json['data']['serial_number']);
+        $this->assertSame('Dell', $json['data']['asset']['relations']['brand']['name']);
+        $this->assertSame('Laptop', $json['data']['asset']['relations']['asset_category']['name']);
+        $this->assertSame('Kantor Jakarta', $json['data']['asset']['relations']['current_location']['name']);
 
         $this->trackAssetPhotoFiles($asset['id']);
+    }
+
+    public function testCheckSerialNumberReturnsNullPhotoUrlWhenDuplicateAssetHasNoPhoto(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $asset     = $this->createExistingAssetWithPhotos($scannerId, 0);
+        $token     = $this->bearerTokenFor('scanner01');
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->get('api/v1/assets/check-sn?serial_number=' . $asset['serial_number']);
+
+        $response->assertStatus(200);
+        $json = $this->parseJsonResponse($response);
+
+        $this->assertTrue($json['data']['exists']);
+        $this->assertArrayHasKey('photo_url', $json['data']['asset']);
+        $this->assertNull($json['data']['asset']['photo_url']);
     }
 
     public function testCreateAssetCreatesPhotoScanLogAndAuditTrail(): void
@@ -76,7 +96,7 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
             'upload_id' => $upload['upload_id'],
             'asset_id' => $assetId,
         ]);
-        $this->seeNumRecords(9, 'asset_audit_logs', [
+        $this->seeNumRecords(8, 'asset_audit_logs', [
             'asset_id' => $assetId,
             'action' => 'create',
         ]);
@@ -135,6 +155,10 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $json = $this->parseJsonResponse($response);
 
         $this->assertTrue($json['success']);
+        $this->assertSame('Dell', $json['data']['relations']['brand']['name']);
+        $this->assertSame('Laptop', $json['data']['relations']['asset_category']['name']);
+        $this->assertSame('Gudang Pusat', $json['data']['relations']['source_location']['name']);
+        $this->assertSame('Toko Bandung', $json['data']['relations']['current_location']['name']);
         $this->seeInDatabase('assets', [
             'id' => $asset['id'],
             'notes' => 'Scanner updated note',
@@ -156,6 +180,27 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
             'result_status' => 'success',
             'scanned_by' => $scannerId,
         ]);
+
+        $this->trackAssetPhotoFiles($asset['id']);
+    }
+
+    public function testAssetListIncludesNamedForeignRelations(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $asset     = $this->createExistingAssetWithPhotos($scannerId, 1);
+        $token     = $this->bearerTokenFor('scanner01');
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->get('api/v1/assets?serial_number=' . $asset['serial_number']);
+
+        $response->assertStatus(200);
+        $json = $this->parseJsonResponse($response);
+
+        $this->assertCount(1, $json['data']);
+        $this->assertSame('Dell', $json['data'][0]['relations']['brand']['name']);
+        $this->assertSame('Laptop', $json['data'][0]['relations']['asset_category']['name']);
+        $this->assertSame('Gudang Pusat', $json['data'][0]['relations']['source_location']['name']);
+        $this->assertSame('Kantor Jakarta', $json['data'][0]['relations']['current_location']['name']);
 
         $this->trackAssetPhotoFiles($asset['id']);
     }
@@ -191,6 +236,35 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         ]);
 
         $this->trackAssetPhotoFiles($asset['id']);
+    }
+
+    public function testScanLogsReturnNullPhotoUrlWhenAssetHasNoPhoto(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $asset     = $this->createExistingAssetWithPhotos($scannerId, 0);
+        $token     = $this->bearerTokenFor('scanner01');
+
+        $this->db->table('asset_scan_logs')->insert([
+            'serial_number' => $asset['serial_number'],
+            'asset_id'      => $asset['id'],
+            'scanned_by'    => $scannerId,
+            'scan_method'   => 'barcode',
+            'result_status' => 'duplicate',
+            'message'       => 'Fixture duplicate without photo',
+            'device_info'   => 'PHPUnit',
+            'app_platform'  => 'web',
+            'created_at'    => gmdate('Y-m-d H:i:s'),
+        ]);
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->get('api/v1/scan-logs?serial_number=' . $asset['serial_number']);
+
+        $response->assertStatus(200);
+        $json = $this->parseJsonResponse($response);
+
+        $this->assertCount(1, $json['data']);
+        $this->assertArrayHasKey('photo_url', $json['data'][0]);
+        $this->assertNull($json['data'][0]['photo_url']);
     }
 
     public function testScannerCannotAccessGlobalAuditLogs(): void

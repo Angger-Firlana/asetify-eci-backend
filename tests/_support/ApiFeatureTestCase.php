@@ -79,7 +79,6 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
 
         $assetData = [
             'serial_number'       => $serialNumber,
-            'asset_type_id'       => $this->idFromCode('asset_types', 'device'),
             'asset_category_id'   => $this->idFromCode('asset_categories', 'laptop'),
             'brand_id'            => $this->idFromCode('brands', 'dell'),
             'model_name'          => 'Latitude Test',
@@ -169,7 +168,6 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
     {
         return [
             'serial_number' => $serialNumber,
-            'asset_type_id' => $this->idFromCode('asset_types', 'device'),
             'asset_category_id' => $this->idFromCode('asset_categories', 'laptop'),
             'brand_id' => $this->idFromCode('brands', 'dell'),
             'model_name' => 'Latitude 5440',

@@ -8,7 +8,6 @@ use RuntimeException;
 class AssetAuthorizationService
 {
     private const SCANNER_ALLOWED_FIELDS = [
-        'asset_type_id',
         'asset_category_id',
         'brand_id',
         'model_name',
@@ -20,7 +19,6 @@ class AssetAuthorizationService
 
     private const SUPERVISOR_ALLOWED_FIELDS = [
         'serial_number',
-        'asset_type_id',
         'asset_category_id',
         'brand_id',
         'model_name',

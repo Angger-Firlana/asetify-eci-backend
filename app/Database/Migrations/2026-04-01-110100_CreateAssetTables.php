@@ -31,11 +31,6 @@ class CreateAssetTables extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 150,
             ],
-            'asset_type_id' => [
-                'type'       => 'BIGINT',
-                'constraint' => 20,
-                'unsigned'   => true,
-            ],
             'asset_category_id' => [
                 'type'       => 'BIGINT',
                 'constraint' => 20,
@@ -99,11 +94,9 @@ class CreateAssetTables extends Migration
         $this->forge->addKey('source_location_id', false, false, 'idx_assets_source_location');
         $this->forge->addKey('current_location_id', false, false, 'idx_assets_current_location');
         $this->forge->addKey('brand_id', false, false, 'idx_assets_brand');
-        $this->forge->addKey('asset_type_id', false, false, 'idx_assets_type');
         $this->forge->addKey('asset_category_id', false, false, 'idx_assets_category');
         $this->forge->addKey('condition_status', false, false, 'idx_assets_condition');
         $this->forge->addKey(['created_at', 'current_location_id'], false, false, 'idx_assets_created_location');
-        $this->forge->addForeignKey('asset_type_id', 'asset_types', 'id', 'CASCADE', 'RESTRICT', 'fk_assets_asset_type');
         $this->forge->addForeignKey('asset_category_id', 'asset_categories', 'id', 'CASCADE', 'RESTRICT', 'fk_assets_asset_category');
         $this->forge->addForeignKey('brand_id', 'brands', 'id', 'CASCADE', 'RESTRICT', 'fk_assets_brand');
         $this->forge->addForeignKey('source_location_id', 'locations', 'id', 'CASCADE', 'RESTRICT', 'fk_assets_source_location');

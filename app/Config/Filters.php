@@ -53,10 +53,12 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
+            'cors',       // Handle CORS, including preflight requests to undefined OPTIONS routes
             'forcehttps', // Force Global Secure Requests
             'pagecache',  // Web Page Caching
         ],
         'after' => [
+            'cors',        // Ensure CORS headers exist on all responses
             'pagecache',   // Web Page Caching
             'performance', // Performance Metrics
             'toolbar',     // Debug Toolbar
@@ -80,7 +82,7 @@ class Filters extends BaseFilters
         ],
         'after' => [
             // 'honeypot',
-            // 'secureheaders',
+            'secureheaders',
         ],
     ];
 

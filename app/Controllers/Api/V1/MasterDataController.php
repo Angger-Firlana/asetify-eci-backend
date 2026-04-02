@@ -3,35 +3,17 @@
 namespace App\Controllers\Api\V1;
 
 use App\Models\AssetCategoryModel;
-use App\Models\AssetTypeModel;
 use App\Models\BrandModel;
 use App\Models\LocationModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class MasterDataController extends BaseApiController
 {
-    public function assetTypes(): ResponseInterface
-    {
-        $items = model(AssetTypeModel::class)
-            ->active()
-            ->orderBy('name', 'ASC')
-            ->findAll();
-
-        return $this->respondSuccess('Asset types fetched', $items);
-    }
-
     public function assetCategories(): ResponseInterface
     {
-        $assetTypeId = $this->request->getGet('asset_type_id');
-        $search      = trim((string) $this->request->getGet('search'));
+        $search = trim((string) $this->request->getGet('search'));
 
-        $builder = model(AssetCategoryModel::class)
-            ->active()
-            ->withType();
-
-        if ($assetTypeId !== null && $assetTypeId !== '') {
-            $builder->where('asset_categories.asset_type_id', (int) $assetTypeId);
-        }
+        $builder = model(AssetCategoryModel::class)->active();
 
         if ($search !== '') {
             $builder->groupStart()

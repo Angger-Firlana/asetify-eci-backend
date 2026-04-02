@@ -9,7 +9,6 @@ use App\Models\AssetMovementModel;
 use App\Models\AssetPhotoModel;
 use App\Models\AssetPhotoUploadModel;
 use App\Models\AssetScanLogModel;
-use App\Models\AssetTypeModel;
 use App\Models\BrandModel;
 use App\Models\LocationModel;
 use CodeIgniter\Shield\Entities\User;
@@ -54,7 +53,6 @@ class AssetService
 
         $assetData = [
             'serial_number'       => $serialNumber,
-            'asset_type_id'       => (int) $payload['asset_type_id'],
             'asset_category_id'   => (int) $payload['asset_category_id'],
             'brand_id'            => (int) $payload['brand_id'],
             'model_name'          => $payload['model_name'] ?? null,
@@ -208,7 +206,6 @@ class AssetService
         }
 
         $foreignKeyFields = array_intersect_key($payload, array_flip([
-            'asset_type_id',
             'asset_category_id',
             'brand_id',
             'source_location_id',
@@ -222,7 +219,6 @@ class AssetService
 
         $updatableFields = [
             'serial_number',
-            'asset_type_id',
             'asset_category_id',
             'brand_id',
             'model_name',
@@ -543,17 +539,9 @@ class AssetService
 
     private function assertForeignKeys(array $payload): void
     {
-        if (model(AssetTypeModel::class)->find((int) $payload['asset_type_id']) === null) {
-            throw new RuntimeException('asset_type_id is invalid.');
-        }
-
         $assetCategory = model(AssetCategoryModel::class)->find((int) $payload['asset_category_id']);
         if ($assetCategory === null) {
             throw new RuntimeException('asset_category_id is invalid.');
-        }
-
-        if ((int) $assetCategory['asset_type_id'] !== (int) $payload['asset_type_id']) {
-            throw new RuntimeException('asset_category_id does not belong to asset_type_id.');
         }
 
         if (model(BrandModel::class)->find((int) $payload['brand_id']) === null) {
@@ -573,7 +561,6 @@ class AssetService
     {
         $fields = [
             'serial_number',
-            'asset_type_id',
             'asset_category_id',
             'brand_id',
             'model_name',

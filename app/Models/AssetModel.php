@@ -12,7 +12,6 @@ class AssetModel extends Model
     protected $useSoftDeletes = true;
     protected $allowedFields  = [
         'serial_number',
-        'asset_type_id',
         'asset_category_id',
         'brand_id',
         'model_name',
@@ -37,14 +36,22 @@ class AssetModel extends Model
     {
         return $this->select([
                 'assets.id',
+                'assets.brand_id',
                 'brands.name AS brand',
+                'brands.name AS brand_name',
+                'assets.asset_category_id',
                 'asset_categories.name AS asset_category',
+                'asset_categories.name AS asset_category_name',
+                'assets.current_location_id',
                 'locations.name AS current_location',
+                'locations.name AS current_location_name',
                 'assets.condition_status',
+                'primary_photo.id AS photo_id',
             ])
             ->join('brands', 'brands.id = assets.brand_id', 'left')
             ->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left')
             ->join('locations', 'locations.id = assets.current_location_id', 'left')
+            ->join('asset_photos primary_photo', 'primary_photo.asset_id = assets.id AND primary_photo.is_primary = 1', 'left')
             ->where('assets.serial_number', $serialNumber)
             ->first();
     }
@@ -54,17 +61,19 @@ class AssetModel extends Model
         return $this->select([
                 'assets.id',
                 'assets.serial_number',
-                'assets.asset_type_id',
-                'asset_types.name AS asset_type',
                 'assets.asset_category_id',
                 'asset_categories.name AS asset_category',
+                'asset_categories.name AS asset_category_name',
                 'assets.brand_id',
                 'brands.name AS brand',
+                'brands.name AS brand_name',
                 'assets.model_name',
                 'assets.source_location_id',
                 'source_locations.name AS source_location',
+                'source_locations.name AS source_location_name',
                 'assets.current_location_id',
                 'current_locations.name AS current_location',
+                'current_locations.name AS current_location_name',
                 'assets.condition_status',
                 'assets.notes',
                 'assets.created_by',
@@ -72,7 +81,6 @@ class AssetModel extends Model
                 'assets.created_at',
                 'assets.updated_at',
             ])
-            ->join('asset_types', 'asset_types.id = assets.asset_type_id', 'left')
             ->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left')
             ->join('brands', 'brands.id = assets.brand_id', 'left')
             ->join('locations source_locations', 'source_locations.id = assets.source_location_id', 'left')

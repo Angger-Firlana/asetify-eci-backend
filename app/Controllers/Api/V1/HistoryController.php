@@ -54,9 +54,12 @@ class HistoryController extends BaseApiController
         $items = array_map(function (array $item): array {
             $item['scanned_by_user'] = [
                 'id'   => $item['scanned_by'] !== null ? (int) $item['scanned_by'] : null,
-                'name' => $item['scanned_by_name'],
+                'name' => $item['scanned_by_name'] ?? null,
             ];
             unset($item['scanned_by_name']);
+
+            $item['photo_url'] = $this->buildAssetPhotoUrl($item);
+            unset($item['photo_id']);
 
             return $item;
         }, $items);
@@ -175,18 +178,18 @@ class HistoryController extends BaseApiController
         return [
             'id'            => (int) $item['id'],
             'asset_id'      => (int) $item['asset_id'],
-            'serial_number' => $item['serial_number'],
-            'field_name'    => $item['field_name'],
-            'old_value'     => $item['old_value'],
-            'new_value'     => $item['new_value'],
-            'action'        => $item['action'],
-            'change_source' => $item['change_source'],
-            'change_note'   => $item['change_note'],
+            'serial_number' => $item['serial_number'] ?? null,
+            'field_name'    => $item['field_name'] ?? null,
+            'old_value'     => $item['old_value'] ?? null,
+            'new_value'     => $item['new_value'] ?? null,
+            'action'        => $item['action'] ?? null,
+            'change_source' => $item['change_source'] ?? null,
+            'change_note'   => $item['change_note'] ?? null,
             'changed_by'    => [
                 'id'   => $item['changed_by'] !== null ? (int) $item['changed_by'] : null,
-                'name' => $item['changed_by_name'],
+                'name' => $item['changed_by_name'] ?? null,
             ],
-            'created_at'    => $item['created_at'],
+            'created_at'    => $item['created_at'] ?? null,
         ];
     }
 
@@ -203,5 +206,17 @@ class HistoryController extends BaseApiController
                 ($config['normalize'] ?? false) ? $this->normalizeSerialNumber((string) $value) : $value
             );
         }
+    }
+
+    private function buildAssetPhotoUrl(array $item): ?string
+    {
+        $assetId = isset($item['asset_id']) ? (int) $item['asset_id'] : null;
+        $photoId = $item['photo_id'] ?? null;
+
+        if ($assetId === null || $assetId <= 0 || $photoId === null || $photoId === '') {
+            return null;
+        }
+
+        return site_url('api/v1/assets/' . $assetId . '/download-photo/' . $photoId);
     }
 }

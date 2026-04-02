@@ -65,6 +65,26 @@ Jika repo sudah sempat dimigrate sebelum endpoint upload foto ditambahkan, jalan
 php spark migrate --all
 ```
 
+## Production Deploy
+
+Gunakan file `env.production.example` sebagai baseline config server live. Nilai `app.baseURL`, kredensial database, dan `encryption.key` wajib diganti sebelum aplikasi menerima traffic.
+
+Checklist minimum:
+
+1. Copy `env.production.example` menjadi `.env` di server production.
+2. Pastikan document root web server mengarah ke folder `public/`, bukan root project.
+3. Jalankan `composer install --no-dev --optimize-autoloader`.
+4. Jalankan `php spark migrate --all`.
+5. Jalankan `php spark db:seed DatabaseSeeder` bila master data belum ada.
+6. Jalankan `php spark optimize`.
+7. Pastikan folder `writable/` bisa ditulis oleh web server.
+
+Catatan penting:
+
+- Session file jangan diarahkan ke `null`. Biarkan `session.savePath` kosong agar tetap memakai `writable/session`.
+- `app.forceGlobalSecureRequests = true` mengasumsikan traffic sudah HTTPS. Jika server ada di balik reverse proxy/load balancer, konfigurasi proxy trusted IP juga harus benar.
+- Runtime production sekarang menonaktifkan `DBDebug` dan memaksa cookie secure di environment production.
+
 ## Testing
 
 Feature test API sekarang sudah mencakup authorization untuk foto aset existing.
@@ -86,7 +106,6 @@ vendor\bin\phpunit tests\feature\Api\AssetPhotoManagementTest.php
 Migration saat ini mencakup:
 
 - tabel auth dari CodeIgniter Shield
-- `asset_types`
 - `asset_categories`
 - `brands`
 - `locations`
@@ -98,7 +117,6 @@ Migration saat ini mencakup:
 
 Seeder awal mengisi contoh data untuk:
 
-- tipe aset
 - kategori aset
 - brand
 - lokasi

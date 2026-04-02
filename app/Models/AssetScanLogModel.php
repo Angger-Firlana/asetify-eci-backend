@@ -29,6 +29,7 @@ class AssetScanLogModel extends Model
                 'asset_scan_logs.id',
                 'asset_scan_logs.serial_number',
                 'asset_scan_logs.asset_id',
+                'primary_photo.id AS photo_id',
                 'asset_scan_logs.scanned_by',
                 'users.username AS scanned_by_name',
                 'asset_scan_logs.scan_method',
@@ -38,6 +39,7 @@ class AssetScanLogModel extends Model
                 'asset_scan_logs.app_platform',
                 'asset_scan_logs.created_at',
             ])
-            ->join('users', 'users.id = asset_scan_logs.scanned_by', 'left');
+            ->join('users', 'users.id = asset_scan_logs.scanned_by', 'left')
+            ->join('asset_photos primary_photo', 'primary_photo.asset_id = asset_scan_logs.asset_id AND primary_photo.is_primary = 1', 'left');
     }
 }
