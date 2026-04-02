@@ -29,10 +29,12 @@ class Cors extends BaseConfig
             'http://localhost:5173',
             'http://localhost',
             'capacitor://localhost',
+            'https://asetify.berdikari.tech'
         ],
         'allowedOriginsPatterns' => [
             'http://localhost:\d+',
             'http://127\.0\.0\.1:\d+',
+            'https://asetify\.berdikari\.tech',
         ],
 
         'supportsCredentials' => true,
