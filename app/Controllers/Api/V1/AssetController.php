@@ -72,6 +72,10 @@ class AssetController extends BaseApiController
             $payload['serial_number'] = $this->normalizeSerialNumber((string) $payload['serial_number']);
         }
 
+        if (isset($payload['photo_upload_id']) && ! isset($payload['photo_upload_ids'])) {
+            $payload['photo_upload_ids'] = [(string) $payload['photo_upload_id']];
+        }
+
         $rules = [
             'serial_number'       => 'required|string|max_length[150]',
             'asset_category_id'   => 'required|integer',
@@ -459,7 +463,17 @@ class AssetController extends BaseApiController
             return $this->respondError('Photo file not found', ResponseInterface::HTTP_NOT_FOUND);
         }
 
-        return $this->response->download($path, null)->setFileName($photo['file_name']);
+        $contents = @file_get_contents($path);
+        if ($contents === false) {
+            return $this->respondError('Failed to read photo file', ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return $this->response
+            ->setContentType($photo['mime_type'] ?: 'application/octet-stream')
+            ->setHeader('Content-Length', (string) filesize($path))
+            ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($photo['file_name']) . '"')
+            ->setHeader('Cache-Control', 'public, max-age=86400')
+            ->setBody($contents);
     }
 
     private function applyExactFilter(object $builder, string $queryParam, string $column): void

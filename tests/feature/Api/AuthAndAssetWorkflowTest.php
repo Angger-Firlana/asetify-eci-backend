@@ -104,6 +104,47 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->trackAssetPhotoFiles($assetId);
     }
 
+    public function testCreateAssetAcceptsSinglePhotoUploadIdPayload(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $upload    = $this->createTemporaryUpload($scannerId);
+        $token     = $this->bearerTokenFor('scanner01');
+        $serial    = 'SN-SINGLE-' . bin2hex(random_bytes(3));
+        $payload   = $this->baseCreateAssetPayload($serial, []);
+        unset($payload['photo_upload_ids']);
+        $payload['photo_upload_id'] = $upload['upload_id'];
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->withBodyFormat('json')
+            ->post('api/v1/assets', $payload);
+
+        $response->assertStatus(201);
+        $assetId = (int) $this->grabFromDatabase('assets', 'id', ['serial_number' => $serial]);
+
+        $this->seeNumRecords(1, 'asset_photos', ['asset_id' => $assetId]);
+        $this->seeInDatabase('asset_photo_uploads', [
+            'upload_id' => $upload['upload_id'],
+            'asset_id' => $assetId,
+        ]);
+
+        $this->trackAssetPhotoFiles($assetId);
+    }
+
+    public function testDownloadPhotoIsPublicAndServedInline(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $asset     = $this->createExistingAssetWithPhotos($scannerId, 1);
+        $photo     = model(AssetPhotoModel::class)->findForAsset($asset['id'])[0];
+
+        $response = $this->get('api/v1/assets/' . $asset['id'] . '/download-photo/' . $photo['id']);
+
+        $response->assertStatus(200);
+        $this->assertNotSame('', (string) $response->response()->getBody());
+        $this->assertStringStartsWith("\x89PNG", (string) $response->response()->getBody());
+
+        $this->trackAssetPhotoFiles($asset['id']);
+    }
+
     public function testScannerCannotEditSerialNumberOfExistingAsset(): void
     {
         $scannerId = $this->userId('scanner01');

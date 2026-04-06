@@ -29,15 +29,16 @@ class AssetPhotoUploadModel extends Model
     ];
     protected $useTimestamps = false;
 
-    public function findAvailableUploads(array $uploadIds, int $uploadedBy): array
+    public function findAvailableUploads(array $uploadIds, ?int $uploadedBy = null): array
     {
         if ($uploadIds === []) {
             return [];
         }
 
-        return $this->whereIn('upload_id', $uploadIds)
-            ->where('uploaded_by', $uploadedBy)
+        return $this->builder()
+            ->whereIn('upload_id', $uploadIds)
             ->where('consumed_at', null)
-            ->findAll();
+            ->get()
+            ->getResultArray();
     }
 }

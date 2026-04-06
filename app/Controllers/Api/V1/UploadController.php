@@ -11,13 +11,6 @@ class UploadController extends BaseApiController
     public function photo(): ResponseInterface
     {
         $user = $this->currentTokenUser();
-        if ($user === null) {
-            return $this->respondError(
-                'Unauthorized',
-                ResponseInterface::HTTP_UNAUTHORIZED,
-                ['token' => ['Invalid or missing access token.']]
-            );
-        }
 
         $file = $this->request->getFile('photo');
         if ($file === null) {
@@ -29,7 +22,7 @@ class UploadController extends BaseApiController
         }
 
         try {
-            $upload = (new PhotoUploadService())->storeTemporaryUpload($file, (int) $user->id);
+            $upload = (new PhotoUploadService())->storeTemporaryUpload($file, (int) ($user?->id ?? 0));
 
             return $this->respondSuccess(
                 'Photo uploaded',

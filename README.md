@@ -8,6 +8,22 @@ Backend API Asetify berbasis CodeIgniter 4 untuk flow listing aset IT:
 - history scan
 - audit log perubahan aset
 
+## Ringkasan API Foto
+
+Flow foto aset saat ini:
+
+- `POST /api/v1/uploads/photos` dapat dipanggil tanpa token untuk upload file gambar sementara.
+- `POST /api/v1/assets` tetap butuh bearer token, dan menerima `photo_upload_ids` array maupun `photo_upload_id` tunggal.
+- `POST /api/v1/assets/{assetId}/photos` tetap butuh bearer token.
+- `GET /api/v1/assets/{assetId}/download-photo/{photoId}` dapat dipanggil tanpa token untuk fetch gambar.
+
+Catatan perilaku:
+
+- Upload sementara disimpan di `writable/uploads/tmp`.
+- Saat asset dibuat atau foto ditambahkan ke asset existing, file dipindahkan ke `writable/uploads/assets`.
+- Link `photo_url` dan `download_url` sekarang aman dipakai langsung oleh frontend tanpa bearer token.
+- Upload sementara hanya bisa dipakai sekali karena record upload akan ditandai `consumed_at`.
+
 Skema database dan migration di repo ini mengikuti dokumen acuan pada folder parent:
 
 - `../docs/database-design.md`
@@ -133,5 +149,7 @@ Seeder development user menambahkan akun berikut:
 - Upload foto sementara disimpan di `writable/uploads/tmp`, lalu dipindah ke `writable/uploads/assets` saat asset berhasil dibuat.
 - `asset_photos.file_size_bytes` dibatasi dengan check constraint `<= 1048576` sesuai requirement foto maksimal 1 MB.
 - `assets.serial_number` dibuat unik secara database.
+- Endpoint foto publik:
+  `POST /api/v1/uploads/photos` dan `GET /api/v1/assets/{assetId}/download-photo/{photoId}`.
 - Fondasi API yang sudah tersedia saat ini:
   `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, dan endpoint `GET /api/v1/masters/*`.

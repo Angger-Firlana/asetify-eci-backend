@@ -9,6 +9,8 @@ $routes->get('/', 'Home::index');
 
 $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static function (RouteCollection $routes): void {
     $routes->post('auth/login', 'AuthController::login');
+    $routes->get('assets/(:num)/download-photo/(:num)', 'AssetController::downloadPhoto/$1/$2');
+    $routes->post('uploads/photos', 'UploadController::photo');
 
     $routes->group('', ['filter' => 'api-auth'], static function (RouteCollection $routes): void {
         $routes->post('auth/logout', 'AuthController::logout');
@@ -23,13 +25,11 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->post('assets/(:num)/photos', 'AssetController::addPhotos/$1');
         $routes->delete('assets/(:num)/photos/(:num)', 'AssetController::deletePhoto/$1/$2');
         $routes->get('assets/(:num)/audit-logs', 'HistoryController::assetAuditLogs/$1');
-        $routes->get('assets/(:num)/download-photo/(:num)', 'AssetController::downloadPhoto/$1/$2');
 
         $routes->get('masters/asset-categories', 'MasterDataController::assetCategories');
         $routes->get('masters/brands', 'MasterDataController::brands');
         $routes->get('masters/locations', 'MasterDataController::locations');
 
-        $routes->post('uploads/photos', 'UploadController::photo');
         $routes->post('scan-logs', 'ScanLogController::create');
         $routes->get('scan-logs', 'HistoryController::scanLogs');
         $routes->get('audit-logs', 'HistoryController::globalAuditLogs');
