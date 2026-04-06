@@ -35,6 +35,8 @@ class Cors extends BaseConfig
             'http://localhost:\d+',
             'http://127\.0\.0\.1:\d+',
             'https://asetify\.berdikari\.tech',
+            'https://localhost:\d+',
+            'https://localhost'
         ],
 
         'supportsCredentials' => true,
