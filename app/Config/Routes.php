@@ -27,7 +27,13 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('assets/(:num)/audit-logs', 'HistoryController::assetAuditLogs/$1');
 
         $routes->get('masters/asset-categories', 'MasterDataController::assetCategories');
+        $routes->post('masters/asset-categories', 'MasterDataController::storeAssetCategory');
+        $routes->get('masters/types', 'MasterDataController::types');
+        $routes->post('masters/types', 'MasterDataController::storeType');
         $routes->get('masters/brands', 'MasterDataController::brands');
+        $routes->post('masters/brands', 'MasterDataController::storeBrand');
+        $routes->get('masters/models', 'MasterDataController::models');
+        $routes->post('masters/models', 'MasterDataController::storeModel');
         $routes->get('masters/locations', 'MasterDataController::locations');
 
         $routes->post('scan-logs', 'ScanLogController::create');

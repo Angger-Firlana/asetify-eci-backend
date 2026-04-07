@@ -244,6 +244,7 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
         $this->db->disableForeignKeyChecks();
 
         foreach ([
+            'asset_models',
             'asset_photo_uploads',
             'asset_audit_logs',
             'asset_movements',

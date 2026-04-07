@@ -63,7 +63,7 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertNull($json['data']['asset']['photo_url']);
     }
 
-    public function testCreateAssetCreatesPhotoScanLogAndAuditTrail(): void
+    public function testCreateAssetCreatesPhotoAndScanLogWithoutCreateAuditTrail(): void
     {
         $scannerId = $this->userId('scanner01');
         $upload    = $this->createTemporaryUpload($scannerId);
@@ -96,7 +96,7 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
             'upload_id' => $upload['upload_id'],
             'asset_id' => $assetId,
         ]);
-        $this->seeNumRecords(8, 'asset_audit_logs', [
+        $this->seeNumRecords(0, 'asset_audit_logs', [
             'asset_id' => $assetId,
             'action' => 'create',
         ]);

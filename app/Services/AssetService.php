@@ -24,7 +24,6 @@ class AssetService
         $photoModel       = model(AssetPhotoModel::class);
         $movementModel    = model(AssetMovementModel::class);
         $scanLogModel     = model(AssetScanLogModel::class);
-        $auditLogModel    = model(AssetAuditLogModel::class);
         $photoUploadSvc   = new PhotoUploadService();
         $now              = gmdate('Y-m-d H:i:s');
         $serialNumber     = strtoupper(trim((string) $payload['serial_number']));
@@ -142,10 +141,6 @@ class AssetService
                 'app_platform'  => $payload['app_platform'] ?? 'web',
                 'created_at'    => $now,
             ]);
-
-            foreach ($this->buildCreateAuditLogs($assetData, $assetId, $userId, $now) as $auditRow) {
-                $auditLogModel->insert($auditRow);
-            }
 
             if ($db->transStatus() === false) {
                 throw new RuntimeException('Asset transaction failed.');
@@ -555,38 +550,6 @@ class AssetService
         if (model(LocationModel::class)->find((int) $payload['current_location_id']) === null) {
             throw new RuntimeException('current_location_id is invalid.');
         }
-    }
-
-    private function buildCreateAuditLogs(array $assetData, int $assetId, int $userId, string $createdAt): array
-    {
-        $fields = [
-            'serial_number',
-            'asset_category_id',
-            'brand_id',
-            'model_name',
-            'source_location_id',
-            'current_location_id',
-            'condition_status',
-            'notes',
-        ];
-
-        $rows = [];
-
-        foreach ($fields as $field) {
-            $rows[] = [
-                'asset_id'      => $assetId,
-                'action'        => 'create',
-                'changed_by'    => $userId,
-                'change_source' => 'scan_flow',
-                'field_name'    => $field,
-                'old_value'     => null,
-                'new_value'     => $assetData[$field] !== null ? (string) $assetData[$field] : null,
-                'change_note'   => 'Initial asset creation',
-                'created_at'    => $createdAt,
-            ];
-        }
-
-        return $rows;
     }
 
     private function buildUpdateAuditLogs(array $changes, int $assetId, int $userId, string $createdAt, string $source): array

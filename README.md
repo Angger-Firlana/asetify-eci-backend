@@ -24,6 +24,39 @@ Catatan perilaku:
 - Link `photo_url` dan `download_url` sekarang aman dipakai langsung oleh frontend tanpa bearer token.
 - Upload sementara hanya bisa dipakai sekali karena record upload akan ditandai `consumed_at`.
 
+## Ringkasan API Master
+
+Master data yang tersedia saat ini:
+
+- `GET /api/v1/masters/brands`
+- `POST /api/v1/masters/brands`
+- `GET /api/v1/masters/models`
+- `POST /api/v1/masters/models`
+- `GET /api/v1/masters/asset-categories`
+- `POST /api/v1/masters/asset-categories`
+- `GET /api/v1/masters/types`
+- `POST /api/v1/masters/types`
+- `GET /api/v1/masters/locations`
+
+Catatan perilaku:
+
+- Endpoint create master data tetap memerlukan bearer token.
+- `POST /api/v1/masters/brands`, `POST /api/v1/masters/types`, dan `POST /api/v1/masters/asset-categories` bisa dipakai oleh user dengan permission `masters.manage` atau `masters.create-inline`.
+- `POST /api/v1/masters/models` tetap khusus untuk user dengan permission `masters.manage`.
+- `type` memakai tabel `asset_categories`, karena schema saat ini tidak lagi memakai tabel `asset_types`.
+- `model` memakai tabel baru `asset_models` dan terhubung ke `brand_id`.
+- Flow create asset yang sekarang tetap menyimpan `model_name` sebagai string, jadi master `asset_models` dipakai sebagai referensi data input atau dropdown.
+- `name` dan `code` untuk master data baru dinormalisasi ke lowercase.
+
+Alur frontend searchable field yang direkomendasikan:
+
+1. Panggil endpoint GET master data dengan `search`, `id`, atau `name`.
+2. Jika hasil kosong, tampilkan tombol seperti `Tambah "xxx"`.
+3. Saat tombol diklik, panggil endpoint create yang sesuai:
+   - brand: `POST /api/v1/masters/brands`
+   - type/category: `POST /api/v1/masters/types` atau `POST /api/v1/masters/asset-categories`
+4. Gunakan object `data` dari response create secara langsung untuk auto-select opsi yang baru dibuat, karena response create sudah mengembalikan `id`, `name`, dan `code`.
+
 Skema database dan migration di repo ini mengikuti dokumen acuan pada folder parent:
 
 - `../docs/database-design.md`
