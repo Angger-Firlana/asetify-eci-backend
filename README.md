@@ -37,12 +37,14 @@ Master data yang tersedia saat ini:
 - `GET /api/v1/masters/types`
 - `POST /api/v1/masters/types`
 - `GET /api/v1/masters/locations`
+- `POST /api/v1/masters/locations`
 
 Catatan perilaku:
 
 - Endpoint create master data tetap memerlukan bearer token.
 - `POST /api/v1/masters/brands`, `POST /api/v1/masters/types`, dan `POST /api/v1/masters/asset-categories` bisa dipakai oleh user dengan permission `masters.manage` atau `masters.create-inline`.
 - `POST /api/v1/masters/models` tetap khusus untuk user dengan permission `masters.manage`.
+- `POST /api/v1/masters/locations` hanya memerlukan bearer token tanpa permission khusus.
 - `type` memakai tabel `asset_categories`, karena schema saat ini tidak lagi memakai tabel `asset_types`.
 - `model` memakai tabel baru `asset_models` dan terhubung ke `brand_id`.
 - Flow create asset yang sekarang tetap menyimpan `model_name` sebagai string, jadi master `asset_models` dipakai sebagai referensi data input atau dropdown.

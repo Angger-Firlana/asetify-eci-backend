@@ -148,6 +148,69 @@ class MasterDataController extends BaseApiController
         return $this->respondSuccess('Locations fetched', $items);
     }
 
+    public function storeLocation(): ResponseInterface
+    {
+        $user = $this->requirePermission();
+        if ($user instanceof ResponseInterface) {
+            return $user;
+        }
+
+        $payload = $this->request->getJSON(true) ?? $this->request->getPost();
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        if (! $this->validateData($payload, [
+            'name' => 'required|string|max_length[100]',
+            'code' => 'permit_empty|string|max_length[50]',
+            'location_type' => 'permit_empty|string|max_length[50]',
+            'address' => 'permit_empty|string|max_length[255]',
+            'is_active' => 'permit_empty|in_list[0,1]',
+        ])) {
+            return $this->respondError(
+                'Validation failed',
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY,
+                $this->validator->getErrors()
+            );
+        }
+
+        $model = model(LocationModel::class);
+        $name  = $this->normalizeMasterName((string) $payload['name']);
+        $code  = $this->normalizeMasterCode($payload['code'] ?? $name);
+
+        if ($model->where('code', $code)->first() !== null) {
+            return $this->respondError(
+                'Location code already exists.',
+                ResponseInterface::HTTP_CONFLICT,
+                ['code' => ['The generated or provided code is already in use.']]
+            );
+        }
+
+        if ($model->where('name', $name)->first() !== null) {
+            return $this->respondError(
+                'Location name already exists.',
+                ResponseInterface::HTTP_CONFLICT,
+                ['name' => ['The location name already exists.']]
+            );
+        }
+
+        $now = gmdate('Y-m-d H:i:s');
+        $data = [
+            'code' => $code,
+            'name' => $name,
+            'location_type' => trim((string) ($payload['location_type'] ?? '')),
+            'address' => trim((string) ($payload['address'] ?? '')),
+            'is_active' => (int) ($payload['is_active'] ?? 1),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        $model->insert($data);
+        $location = $model->find((int) $model->getInsertID());
+
+        return $this->respondSuccess('Location created successfully', $location, ResponseInterface::HTTP_CREATED);
+    }
+
     public function storeBrand(): ResponseInterface
     {
         $user = $this->requirePermission('masters.manage', 'masters.create-inline');

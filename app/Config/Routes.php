@@ -35,6 +35,7 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('masters/models', 'MasterDataController::models');
         $routes->post('masters/models', 'MasterDataController::storeModel');
         $routes->get('masters/locations', 'MasterDataController::locations');
+        $routes->post('masters/locations', 'MasterDataController::storeLocation');
 
         $routes->post('scan-logs', 'ScanLogController::create');
         $routes->get('scan-logs', 'HistoryController::scanLogs');
