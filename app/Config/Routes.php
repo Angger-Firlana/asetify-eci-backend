@@ -10,6 +10,7 @@ $routes->get('/', 'Home::index');
 $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static function (RouteCollection $routes): void {
     $routes->post('auth/login', 'AuthController::login');
     $routes->get('assets/(:num)/download-photo/(:num)', 'AssetController::downloadPhoto/$1/$2');
+    $routes->get('workspaces/items/(:num)/download-photo/(:num)', 'WorkspaceController::downloadPhoto/$1/$2');
     $routes->post('uploads/photos', 'UploadController::photo');
 
     $routes->group('', ['filter' => 'api-auth'], static function (RouteCollection $routes): void {
@@ -41,5 +42,11 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('scan-logs', 'HistoryController::scanLogs');
         $routes->get('audit-logs', 'HistoryController::globalAuditLogs');
         $routes->get('dashboard/summary', 'DashboardController::summary');
+
+        $routes->get('workspaces', 'WorkspaceController::index');
+        $routes->post('workspaces', 'WorkspaceController::create');
+        $routes->get('workspaces/(:num)', 'WorkspaceController::show/$1');
+        $routes->post('workspaces/(:num)/scan', 'WorkspaceController::scan/$1');
+        $routes->post('workspaces/(:num)/items/(:num)/register-asset', 'WorkspaceController::registerAsset/$1/$2');
     });
 });

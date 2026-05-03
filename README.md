@@ -16,13 +16,33 @@ Flow foto aset saat ini:
 - `POST /api/v1/assets` tetap butuh bearer token, dan menerima `photo_upload_ids` array maupun `photo_upload_id` tunggal.
 - `POST /api/v1/assets/{assetId}/photos` tetap butuh bearer token.
 - `GET /api/v1/assets/{assetId}/download-photo/{photoId}` dapat dipanggil tanpa token untuk fetch gambar.
+- `GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}` dapat dipanggil tanpa token untuk fetch gambar item workspace.
 
 Catatan perilaku:
 
 - Upload sementara disimpan di `writable/uploads/tmp`.
 - Saat asset dibuat atau foto ditambahkan ke asset existing, file dipindahkan ke `writable/uploads/assets`.
-- Link `photo_url` dan `download_url` sekarang aman dipakai langsung oleh frontend tanpa bearer token.
+- Link `photo_url` dan `download_url` sekarang aman dipakai langsung oleh frontend tanpa bearer token, termasuk `workspace item photo_url`.
 - Upload sementara hanya bisa dipakai sekali karena record upload akan ditandai `consumed_at`.
+
+## Ringkasan API Workspace
+
+Flow workspace penerimaan aset saat ini:
+
+- `GET /api/v1/workspaces` untuk list workspace.
+- `POST /api/v1/workspaces` untuk membuat workspace baru.
+- `GET /api/v1/workspaces/{workspaceId}` untuk melihat detail workspace beserta item yang sudah discan.
+- `POST /api/v1/workspaces/{workspaceId}/scan` untuk scan serial number ke workspace.
+- `POST /api/v1/workspaces/{workspaceId}/items/{workspaceItemId}/register-asset` untuk mempromosikan item workspace yang belum ada di master menjadi asset baru.
+
+Catatan perilaku:
+
+- Workspace memiliki `source_location` dan `target_location` yang wajib berbeda.
+- Workspace hanya bisa menerima scan saat status `active`.
+- User dengan group `scanner` hanya bisa melihat workspace yang dibuat olehnya sendiri.
+- Jika serial number ditemukan di master asset, item workspace akan dikaitkan ke asset existing dan perubahan lokasi atau kondisi akan disinkronkan ke asset master.
+- Jika serial number belum ditemukan, item workspace akan berstatus `ready_to_register` sampai dipromosikan menjadi asset baru.
+- Response item workspace sekarang menyertakan `photo_url` untuk primary photo item workspace jika tersedia, serta `matched_asset.photo_url` untuk asset yang sudah terhubung.
 
 ## Ringkasan API Master
 
@@ -165,6 +185,10 @@ Migration saat ini mencakup:
 - `asset_scan_logs`
 - `asset_movements`
 - `asset_audit_logs`
+- `asset_workspaces`
+- `asset_workspace_items`
+- `asset_workspace_item_photos`
+- `asset_workspace_item_scans`
 
 Seeder awal mengisi contoh data untuk:
 
@@ -185,6 +209,6 @@ Seeder development user menambahkan akun berikut:
 - `asset_photos.file_size_bytes` dibatasi dengan check constraint `<= 1048576` sesuai requirement foto maksimal 1 MB.
 - `assets.serial_number` dibuat unik secara database.
 - Endpoint foto publik:
-  `POST /api/v1/uploads/photos` dan `GET /api/v1/assets/{assetId}/download-photo/{photoId}`.
+  `POST /api/v1/uploads/photos`, `GET /api/v1/assets/{assetId}/download-photo/{photoId}`, dan `GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}`.
 - Fondasi API yang sudah tersedia saat ini:
   `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, dan endpoint `GET /api/v1/masters/*`.
