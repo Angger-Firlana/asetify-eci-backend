@@ -36,6 +36,7 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->ensureAppSchemaIsCurrent();
         $this->resetRuntimeTables();
     }
 
@@ -233,6 +234,34 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
             'size' => filesize($absolute),
             'checksum' => hash_file('sha256', $absolute),
         ];
+    }
+
+    private function ensureAppSchemaIsCurrent(): void
+    {
+        if (! isset($this->db, $this->migrations)) {
+            return;
+        }
+
+        foreach ([
+            'asset_workspaces',
+            'asset_workspace_items',
+            'asset_workspace_item_photos',
+            'asset_workspace_item_scans',
+        ] as $table) {
+            if ($this->db->tableExists($table)) {
+                continue;
+            }
+
+            $this->migrations->setNamespace('App');
+            $this->migrations->regress(0, 'tests');
+            $this->migrations->setNamespace('App');
+            $this->migrations->latest('tests');
+
+            $this->seed(\App\Database\Seeds\DatabaseSeeder::class);
+            $this->seed(\App\Database\Seeds\DevelopmentUserSeeder::class);
+
+            break;
+        }
     }
 
     private function resetRuntimeTables(): void
