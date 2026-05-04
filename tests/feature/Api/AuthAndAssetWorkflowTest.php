@@ -267,10 +267,14 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertArrayHasKey('xl/drawings/drawing1.xml', $entries);
         $this->assertArrayHasKey('xl/drawings/_rels/drawing1.xml.rels', $entries);
         $this->assertArrayHasKey('xl/media/image1.png', $entries);
-        $this->assertArrayHasKey('xl/media/image2.png', $entries);
         $this->assertStringContainsString($asset['serial_number'], $entries['xl/worksheets/sheet1.xml']);
-        $this->assertStringContainsString('Photo 1', $entries['xl/worksheets/sheet1.xml']);
-        $this->assertStringContainsString('Photo 2', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Asset Kategori', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Lokasi Asal', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Lokasi Saat Ini', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Catatan', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Photo URL', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Foto', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('api/v1/assets/' . $asset['id'] . '/download-photo/', $entries['xl/worksheets/sheet1.xml']);
 
         $this->trackAssetPhotoFiles($asset['id']);
     }
@@ -311,7 +315,8 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertArrayNotHasKey('xl/drawings/drawing1.xml', $entries);
         $this->assertStringContainsString($matchingAsset['serial_number'], $entries['xl/worksheets/sheet1.xml']);
         $this->assertStringNotContainsString($otherAsset['serial_number'], $entries['xl/worksheets/sheet1.xml']);
-        $this->assertStringNotContainsString('Photo 1', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Foto', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Photo URL', $entries['xl/worksheets/sheet1.xml']);
 
         $this->trackAssetPhotoFiles($matchingAsset['id']);
         $this->trackAssetPhotoFiles($otherAsset['id']);

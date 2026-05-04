@@ -9,26 +9,19 @@ class AssetExcelExportService
 {
     private const BASE_HEADERS = [
         'Asset ID',
-        'Serial Number',
-        'Asset Category ID',
-        'Asset Category',
-        'Brand ID',
+        'Asset Kategori',
         'Brand',
-        'Model Name',
-        'Source Location ID',
-        'Source Location',
-        'Current Location ID',
-        'Current Location',
-        'Condition Status',
-        'Notes',
-        'Created By',
-        'Updated By',
-        'Created At',
-        'Updated At',
-        'Photo Count',
-        'Primary Photo URL',
-        'Photo URLs',
+        'Model',
+        'Serial Number',
+        'Lokasi Asal',
+        'Lokasi Saat Ini',
+        'Kondisi',
+        'Catatan',
+        'Photo URL',
+        'Foto',
     ];
+
+    private const PHOTO_COLUMN_INDEX = 11;
 
     private PhotoUploadService $photoUploadService;
 
@@ -43,18 +36,7 @@ class AssetExcelExportService
             throw new RuntimeException('ZipArchive extension is required to export Excel files.');
         }
 
-        $maxPhotoCount = 0;
-        if ($includeImages) {
-            foreach ($photosByAsset as $photos) {
-                $maxPhotoCount = max($maxPhotoCount, count($photos));
-            }
-        }
-
-        $headers = self::BASE_HEADERS;
-        for ($index = 1; $index <= $maxPhotoCount; $index++) {
-            $headers[] = 'Photo ' . $index;
-        }
-
+        $headers          = self::BASE_HEADERS;
         $rows             = [];
         $rowHeights       = [];
         $drawingAnchors   = [];
@@ -62,69 +44,57 @@ class AssetExcelExportService
         $mediaFiles       = [];
         $contentTypes     = [];
         $mediaIndex       = 0;
-        $photoColumnStart = count(self::BASE_HEADERS) + 1;
 
         foreach ($assets as $assetIndex => $asset) {
             $sheetRow    = $assetIndex + 2;
             $assetId     = (int) ($asset['id'] ?? 0);
             $assetPhotos = $photosByAsset[$assetId] ?? [];
-            $photoUrls   = array_map(
-                static fn (array $photo): string => site_url('api/v1/assets/' . $assetId . '/download-photo/' . $photo['id']),
-                $assetPhotos
-            );
+            $primaryPhoto = $assetPhotos[0] ?? null;
+            $primaryPhotoUrl = $primaryPhoto !== null
+                ? site_url('api/v1/assets/' . $assetId . '/download-photo/' . $primaryPhoto['id'])
+                : '';
 
             $rows[] = [
                 (string) $assetId,
-                (string) ($asset['serial_number'] ?? ''),
-                (string) ($asset['asset_category_id'] ?? ''),
                 (string) ($asset['asset_category_name'] ?? ''),
-                (string) ($asset['brand_id'] ?? ''),
                 (string) ($asset['brand_name'] ?? ''),
                 (string) ($asset['model_name'] ?? ''),
-                (string) ($asset['source_location_id'] ?? ''),
+                (string) ($asset['serial_number'] ?? ''),
                 (string) ($asset['source_location_name'] ?? ''),
-                (string) ($asset['current_location_id'] ?? ''),
                 (string) ($asset['current_location_name'] ?? ''),
                 (string) ($asset['condition_status'] ?? ''),
                 (string) ($asset['notes'] ?? ''),
-                (string) ($asset['created_by'] ?? ''),
-                (string) ($asset['updated_by'] ?? ''),
-                (string) ($asset['created_at'] ?? ''),
-                (string) ($asset['updated_at'] ?? ''),
-                (string) count($assetPhotos),
-                $photoUrls[0] ?? '',
-                implode("\n", $photoUrls),
+                $primaryPhotoUrl,
+                '',
             ];
 
-            if (! $includeImages) {
+            if (! $includeImages || $primaryPhoto === null) {
                 continue;
             }
 
-            foreach (array_values($assetPhotos) as $photoIndex => $photo) {
-                $embeddedImage = $this->loadEmbeddableImage($photo);
-                if ($embeddedImage === null) {
-                    continue;
-                }
-
-                $mediaIndex++;
-                $mediaPath = 'xl/media/image' . $mediaIndex . '.' . $embeddedImage['extension'];
-                $mediaFiles[$mediaPath] = $embeddedImage['contents'];
-                $contentTypes[$embeddedImage['extension']] = $embeddedImage['content_type'];
-
-                $relationshipId = 'rId' . $mediaIndex;
-                $drawingRelations[] = [
-                    'id' => $relationshipId,
-                    'target' => '../media/' . basename($mediaPath),
-                ];
-                $drawingAnchors[] = [
-                    'relationship_id' => $relationshipId,
-                    'name' => $photo['file_name'] ?? ('Photo ' . $mediaIndex),
-                    'column' => $photoColumnStart + $photoIndex,
-                    'row' => $sheetRow,
-                    'shape_id' => $mediaIndex,
-                ];
-                $rowHeights[$sheetRow] = 80;
+            $embeddedImage = $this->loadEmbeddableImage($primaryPhoto);
+            if ($embeddedImage === null) {
+                continue;
             }
+
+            $mediaIndex++;
+            $mediaPath = 'xl/media/image' . $mediaIndex . '.' . $embeddedImage['extension'];
+            $mediaFiles[$mediaPath] = $embeddedImage['contents'];
+            $contentTypes[$embeddedImage['extension']] = $embeddedImage['content_type'];
+
+            $relationshipId = 'rId' . $mediaIndex;
+            $drawingRelations[] = [
+                'id' => $relationshipId,
+                'target' => '../media/' . basename($mediaPath),
+            ];
+            $drawingAnchors[] = [
+                'relationship_id' => $relationshipId,
+                'name' => $primaryPhoto['file_name'] ?? ('Photo ' . $mediaIndex),
+                'column' => self::PHOTO_COLUMN_INDEX,
+                'row' => $sheetRow,
+                'shape_id' => $mediaIndex,
+            ];
+            $rowHeights[$sheetRow] = 90;
         }
 
         $hasDrawing = $includeImages && $drawingAnchors !== [];
@@ -242,9 +212,12 @@ class AssetExcelExportService
         $columnsXml = '';
         foreach ($headers as $index => $header) {
             $columnNumber = $index + 1;
-            $width = str_starts_with($header, 'Photo ') ? 18 : match ($header) {
-                'Notes', 'Photo URLs' => 40,
-                'Primary Photo URL' => 30,
+            $width = match ($header) {
+                'Catatan' => 40,
+                'Photo URL' => 30,
+                'Foto' => 18,
+                'Serial Number' => 20,
+                'Asset Kategori', 'Lokasi Asal', 'Lokasi Saat Ini' => 22,
                 default => 18,
             };
 
