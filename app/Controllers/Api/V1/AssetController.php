@@ -5,9 +5,11 @@ namespace App\Controllers\Api\V1;
 use App\Models\AssetModel;
 use App\Models\AssetMovementModel;
 use App\Models\AssetPhotoModel;
+use App\Services\AssetExcelExportService;
 use App\Services\AssetService;
 use App\Services\AssetAuthorizationService;
 use App\Services\PhotoUploadService;
+use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\HTTP\ResponseInterface;
 use RuntimeException;
 
@@ -134,22 +136,9 @@ class AssetController extends BaseApiController
         $perPage = max(1, min(100, (int) ($this->request->getGet('per_page') ?: 20)));
         $offset  = ($page - 1) * $perPage;
 
-        $sortByWhitelist = [
-            'created_at'       => 'assets.created_at',
-            'serial_number'    => 'assets.serial_number',
-            'brand'            => 'brands.name',
-            'asset_category'   => 'asset_categories.name',
-            'source_location'  => 'source_locations.name',
-            'current_location' => 'current_locations.name',
-            'condition_status' => 'assets.condition_status',
-        ];
+        [$sortCol, $sortDir] = $this->resolveAssetSort();
 
-        $sortBy  = (string) ($this->request->getGet('sort_by') ?: 'created_at');
-        $sortDir = strtolower((string) ($this->request->getGet('sort_dir') ?: 'desc')) === 'asc' ? 'ASC' : 'DESC';
-        $sortCol = $sortByWhitelist[$sortBy] ?? 'assets.created_at';
-
-        $builder = model(AssetModel::class)->builder();
-        $builder->select([
+        $builder = $this->buildAssetListBuilder([
             'assets.id',
             'assets.serial_number',
             'assets.asset_category_id',
@@ -167,41 +156,6 @@ class AssetController extends BaseApiController
             'assets.condition_status',
             'primary_photo.id AS photo_id',
         ]);
-        $builder->join('brands', 'brands.id = assets.brand_id', 'left');
-        $builder->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left');
-        $builder->join('locations source_locations', 'source_locations.id = assets.source_location_id', 'left');
-        $builder->join('locations current_locations', 'current_locations.id = assets.current_location_id', 'left');
-        $builder->join('asset_photos primary_photo', 'primary_photo.asset_id = assets.id AND primary_photo.is_primary = 1', 'left');
-
-        $search = trim((string) $this->request->getGet('search'));
-        if ($search !== '') {
-            $builder->groupStart()
-                ->like('assets.serial_number', $search)
-                ->orLike('brands.name', $search)
-                ->orLike('asset_categories.name', $search)
-                ->orLike('source_locations.name', $search)
-                ->orLike('current_locations.name', $search)
-                ->orLike('assets.model_name', $search)
-                ->groupEnd();
-        }
-
-        $this->applyExactFilter($builder, 'serial_number', 'assets.serial_number');
-        $this->applyExactFilter($builder, 'asset_category_id', 'assets.asset_category_id');
-        $this->applyExactFilter($builder, 'brand_id', 'assets.brand_id');
-        $this->applyExactFilter($builder, 'source_location_id', 'assets.source_location_id');
-        $this->applyExactFilter($builder, 'current_location_id', 'assets.current_location_id');
-        $this->applyExactFilter($builder, 'condition_status', 'assets.condition_status');
-        $this->applyExactFilter($builder, 'created_by', 'assets.created_by');
-
-        $dateFrom = $this->request->getGet('date_from');
-        if ($dateFrom) {
-            $builder->where('DATE(assets.created_at) >=', $dateFrom);
-        }
-
-        $dateTo = $this->request->getGet('date_to');
-        if ($dateTo) {
-            $builder->where('DATE(assets.created_at) <=', $dateTo);
-        }
 
         $countBuilder = clone $builder;
         $total        = $countBuilder->countAllResults();
@@ -230,6 +184,107 @@ class AssetController extends BaseApiController
                 'total_pages' => (int) ceil($total / $perPage),
             ]
         );
+    }
+
+    public function export(): ResponseInterface
+    {
+        $user = $this->currentTokenUser();
+        if ($user === null) {
+            return $this->respondError(
+                'Unauthorized',
+                ResponseInterface::HTTP_UNAUTHORIZED,
+                ['token' => ['Invalid or missing access token.']]
+            );
+        }
+
+        $query = $this->request->getGet();
+        if (! is_array($query)) {
+            $query = [];
+        }
+
+        $includeImages = $this->parseBooleanQueryValue($query['include_images'] ?? null);
+        if (array_key_exists('include_images', $query) && $includeImages === null) {
+            return $this->respondError(
+                'Validation failed',
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY,
+                ['include_images' => ['The include_images field must be a boolean value.']]
+            );
+        }
+
+        if (! $this->validateData($query, [
+            'serial_number'       => 'permit_empty|string|max_length[150]',
+            'search'              => 'permit_empty|string|max_length[255]',
+            'asset_category_id'   => 'permit_empty|integer',
+            'brand_id'            => 'permit_empty|integer',
+            'source_location_id'  => 'permit_empty|integer',
+            'current_location_id' => 'permit_empty|integer',
+            'condition_status'    => 'permit_empty|in_list[good,bad]',
+            'created_by'          => 'permit_empty|integer',
+            'date_from'           => 'permit_empty|regex_match[/^\\d{4}-\\d{2}-\\d{2}$/]',
+            'date_to'             => 'permit_empty|regex_match[/^\\d{4}-\\d{2}-\\d{2}$/]',
+            'sort_by'             => 'permit_empty|in_list[created_at,serial_number,brand,asset_category,source_location,current_location,condition_status]',
+            'sort_dir'            => 'permit_empty|in_list[asc,desc,ASC,DESC]',
+        ])) {
+            return $this->respondError(
+                'Validation failed',
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY,
+                $this->validator->getErrors()
+            );
+        }
+
+        [$sortCol, $sortDir] = $this->resolveAssetSort();
+
+        $assets = $this->buildAssetListBuilder([
+            'assets.id',
+            'assets.serial_number',
+            'assets.asset_category_id',
+            'asset_categories.name AS asset_category_name',
+            'assets.brand_id',
+            'brands.name AS brand_name',
+            'assets.model_name',
+            'assets.source_location_id',
+            'source_locations.name AS source_location_name',
+            'assets.current_location_id',
+            'current_locations.name AS current_location_name',
+            'assets.condition_status',
+            'assets.notes',
+            'assets.created_by',
+            'assets.updated_by',
+            'assets.created_at',
+            'assets.updated_at',
+        ])
+            ->orderBy($sortCol, $sortDir)
+            ->get()
+            ->getResultArray();
+
+        $photosByAsset = [];
+        if ($assets !== []) {
+            $assetIds = array_map(static fn (array $asset): int => (int) $asset['id'], $assets);
+            $photosByAsset = model(AssetPhotoModel::class)->findForAssets($assetIds);
+        }
+
+        try {
+            $content = (new AssetExcelExportService())->build($assets, $photosByAsset, $includeImages ?? true);
+        } catch (RuntimeException $e) {
+            return $this->respondError(
+                $e->getMessage(),
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY
+            );
+        } catch (\Throwable $e) {
+            return $this->respondError(
+                'Failed to export assets',
+                ResponseInterface::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+
+        $filename = 'asset-export-' . gmdate('Ymd-His') . '.xlsx';
+
+        return $this->response
+            ->setStatusCode(ResponseInterface::HTTP_OK)
+            ->setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setHeader('Content-Length', (string) strlen($content))
+            ->setBody($content);
     }
 
     public function show(int $assetId): ResponseInterface
@@ -476,7 +531,68 @@ class AssetController extends BaseApiController
             ->setBody($contents);
     }
 
-    private function applyExactFilter(object $builder, string $queryParam, string $column): void
+    private function buildAssetListBuilder(array $select): BaseBuilder
+    {
+        $builder = model(AssetModel::class)->builder();
+        $builder->select($select);
+        $builder->join('brands', 'brands.id = assets.brand_id', 'left');
+        $builder->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left');
+        $builder->join('locations source_locations', 'source_locations.id = assets.source_location_id', 'left');
+        $builder->join('locations current_locations', 'current_locations.id = assets.current_location_id', 'left');
+        $builder->join('asset_photos primary_photo', 'primary_photo.asset_id = assets.id AND primary_photo.is_primary = 1', 'left');
+
+        $search = trim((string) $this->request->getGet('search'));
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('assets.serial_number', $search)
+                ->orLike('brands.name', $search)
+                ->orLike('asset_categories.name', $search)
+                ->orLike('source_locations.name', $search)
+                ->orLike('current_locations.name', $search)
+                ->orLike('assets.model_name', $search)
+                ->groupEnd();
+        }
+
+        $this->applyExactFilter($builder, 'serial_number', 'assets.serial_number');
+        $this->applyExactFilter($builder, 'asset_category_id', 'assets.asset_category_id');
+        $this->applyExactFilter($builder, 'brand_id', 'assets.brand_id');
+        $this->applyExactFilter($builder, 'source_location_id', 'assets.source_location_id');
+        $this->applyExactFilter($builder, 'current_location_id', 'assets.current_location_id');
+        $this->applyExactFilter($builder, 'condition_status', 'assets.condition_status');
+        $this->applyExactFilter($builder, 'created_by', 'assets.created_by');
+
+        $dateFrom = $this->request->getGet('date_from');
+        if ($dateFrom) {
+            $builder->where('DATE(assets.created_at) >=', $dateFrom);
+        }
+
+        $dateTo = $this->request->getGet('date_to');
+        if ($dateTo) {
+            $builder->where('DATE(assets.created_at) <=', $dateTo);
+        }
+
+        return $builder;
+    }
+
+    private function resolveAssetSort(): array
+    {
+        $sortByWhitelist = [
+            'created_at'       => 'assets.created_at',
+            'serial_number'    => 'assets.serial_number',
+            'brand'            => 'brands.name',
+            'asset_category'   => 'asset_categories.name',
+            'source_location'  => 'source_locations.name',
+            'current_location' => 'current_locations.name',
+            'condition_status' => 'assets.condition_status',
+        ];
+
+        $sortBy  = (string) ($this->request->getGet('sort_by') ?: 'created_at');
+        $sortDir = strtolower((string) ($this->request->getGet('sort_dir') ?: 'desc')) === 'asc' ? 'ASC' : 'DESC';
+
+        return [$sortByWhitelist[$sortBy] ?? 'assets.created_at', $sortDir];
+    }
+
+    private function applyExactFilter(BaseBuilder $builder, string $queryParam, string $column): void
     {
         $value = $this->request->getGet($queryParam);
         if ($value !== null && $value !== '') {
@@ -487,6 +603,15 @@ class AssetController extends BaseApiController
                     : $value
             );
         }
+    }
+
+    private function parseBooleanQueryValue(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
 
     private function decoratePhotos(array $photos, int $assetId): array

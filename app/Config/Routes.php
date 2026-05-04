@@ -20,6 +20,7 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('assets/check-sn', 'AssetController::checkSerialNumber');
         $routes->post('assets', 'AssetController::create');
         $routes->get('assets', 'AssetController::index');
+        $routes->get('assets/export', 'AssetController::export');
         $routes->get('assets/(:num)', 'AssetController::show/$1');
         $routes->put('assets/(:num)', 'AssetController::update/$1');
         $routes->get('assets/(:num)/photos', 'AssetController::photos/$1');

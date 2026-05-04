@@ -35,6 +35,26 @@ class AssetPhotoModel extends Model
             ->findAll();
     }
 
+    public function findForAssets(array $assetIds): array
+    {
+        if ($assetIds === []) {
+            return [];
+        }
+
+        $rows = $this->whereIn('asset_id', $assetIds)
+            ->orderBy('asset_id', 'ASC')
+            ->orderBy('is_primary', 'DESC')
+            ->orderBy('id', 'ASC')
+            ->findAll();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['asset_id']][] = $row;
+        }
+
+        return $grouped;
+    }
+
     public function findAssetPhoto(int $assetId, int $photoId): ?array
     {
         return $this->where('asset_id', $assetId)

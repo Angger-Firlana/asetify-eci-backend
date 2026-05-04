@@ -75,8 +75,13 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
 
     protected function createExistingAssetWithPhotos(int $createdBy, int $photoCount = 1): array
     {
+        return $this->createAssetFixture($createdBy, [], $photoCount);
+    }
+
+    protected function createAssetFixture(int $createdBy, array $overrides = [], int $photoCount = 1): array
+    {
         $now          = gmdate('Y-m-d H:i:s');
-        $serialNumber = 'SN-TEST-' . strtoupper(bin2hex(random_bytes(4)));
+        $serialNumber = $overrides['serial_number'] ?? ('SN-TEST-' . strtoupper(bin2hex(random_bytes(4))));
 
         $assetData = [
             'serial_number'       => $serialNumber,
@@ -92,6 +97,7 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
             'created_at'          => $now,
             'updated_at'          => $now,
         ];
+        $assetData = array_merge($assetData, $overrides);
 
         $this->db->table('assets')->insert($assetData);
         $assetId = (int) $this->db->insertID();
@@ -201,7 +207,7 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
         return $json;
     }
 
-    private function idFromCode(string $table, string $code): int
+    protected function idFromCode(string $table, string $code): int
     {
         $row = $this->db->table($table)
             ->select('id')

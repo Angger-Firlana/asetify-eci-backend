@@ -246,6 +246,77 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->trackAssetPhotoFiles($asset['id']);
     }
 
+    public function testAssetExportReturnsXlsxWithFilteredAssetsAndEmbeddedPhotos(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $asset     = $this->createExistingAssetWithPhotos($scannerId, 2);
+        $token     = $this->bearerTokenFor('scanner01');
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->get('api/v1/assets/export?search=' . urlencode($asset['serial_number']) . '&include_images=1');
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            (string) $response->response()->getHeaderLine('Content-Type')
+        );
+
+        $entries = $this->openZipFromResponse((string) $response->response()->getBody());
+
+        $this->assertArrayHasKey('xl/worksheets/sheet1.xml', $entries);
+        $this->assertArrayHasKey('xl/drawings/drawing1.xml', $entries);
+        $this->assertArrayHasKey('xl/drawings/_rels/drawing1.xml.rels', $entries);
+        $this->assertArrayHasKey('xl/media/image1.png', $entries);
+        $this->assertArrayHasKey('xl/media/image2.png', $entries);
+        $this->assertStringContainsString($asset['serial_number'], $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Photo 1', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Photo 2', $entries['xl/worksheets/sheet1.xml']);
+
+        $this->trackAssetPhotoFiles($asset['id']);
+    }
+
+    public function testAssetExportCanExcludeEmbeddedImagesAndApplyFilters(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $matchingAsset = $this->createAssetFixture($scannerId, [
+            'serial_number' => 'SN-EXPORT-MATCH',
+        ], 1);
+        $otherAsset = $this->createAssetFixture($scannerId, [
+            'serial_number' => 'SN-EXPORT-OTHER',
+            'asset_category_id' => $this->idFromCode('asset_categories', 'printer'),
+            'brand_id' => $this->idFromCode('brands', 'hp'),
+            'source_location_id' => $this->idFromCode('locations', 'service-center-main'),
+            'current_location_id' => $this->idFromCode('locations', 'store-bandung'),
+            'model_name' => 'LaserJet Fixture',
+        ], 1);
+        $token = $this->bearerTokenFor('scanner01');
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->get(
+                'api/v1/assets/export?'
+                . http_build_query([
+                    'asset_category_id' => $this->idFromCode('asset_categories', 'laptop'),
+                    'brand_id' => $this->idFromCode('brands', 'dell'),
+                    'source_location_id' => $this->idFromCode('locations', 'warehouse-central'),
+                    'current_location_id' => $this->idFromCode('locations', 'office-jakarta'),
+                    'search' => 'EXPORT-MATCH',
+                    'include_images' => 'false',
+                ])
+            );
+
+        $response->assertStatus(200);
+        $entries = $this->openZipFromResponse((string) $response->response()->getBody());
+
+        $this->assertArrayHasKey('xl/worksheets/sheet1.xml', $entries);
+        $this->assertArrayNotHasKey('xl/drawings/drawing1.xml', $entries);
+        $this->assertStringContainsString($matchingAsset['serial_number'], $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringNotContainsString($otherAsset['serial_number'], $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringNotContainsString('Photo 1', $entries['xl/worksheets/sheet1.xml']);
+
+        $this->trackAssetPhotoFiles($matchingAsset['id']);
+        $this->trackAssetPhotoFiles($otherAsset['id']);
+    }
+
     public function testDuplicateScanLogCanBeRecordedForExistingAsset(): void
     {
         $scannerId = $this->userId('scanner01');
@@ -334,5 +405,27 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertFalse($json['success']);
 
         $this->trackAssetPhotoFiles($asset['id']);
+    }
+
+    private function openZipFromResponse(string $binary): array
+    {
+        $path = tempnam(WRITEPATH . 'cache', 'phpunit-export-');
+        $this->assertNotFalse($path);
+        file_put_contents($path, $binary);
+
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($path) === true);
+
+        $entries = [];
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->getNameIndex($index);
+            $this->assertNotFalse($name);
+            $entries[$name] = (string) $zip->getFromIndex($index);
+        }
+
+        $zip->close();
+        @unlink($path);
+
+        return $entries;
     }
 }

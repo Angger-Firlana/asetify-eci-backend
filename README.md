@@ -5,6 +5,7 @@ Backend API Asetify berbasis CodeIgniter 4 untuk flow listing aset IT:
 - check duplicate serial number
 - upload foto bukti aset
 - create dan update aset
+- export data aset ke Excel
 - history scan
 - audit log perubahan aset
 
@@ -24,6 +25,44 @@ Catatan perilaku:
 - Saat asset dibuat atau foto ditambahkan ke asset existing, file dipindahkan ke `writable/uploads/assets`.
 - Link `photo_url` dan `download_url` sekarang aman dipakai langsung oleh frontend tanpa bearer token, termasuk `workspace item photo_url`.
 - Upload sementara hanya bisa dipakai sekali karena record upload akan ditandai `consumed_at`.
+
+## Ringkasan API Export Aset
+
+Flow export aset saat ini:
+
+- `GET /api/v1/assets/export` untuk download file Excel `.xlsx`.
+- Endpoint export tetap memerlukan bearer token.
+- Filter export mengikuti filter list asset, dengan tambahan opsi embed gambar ke file Excel.
+
+Query parameter yang didukung:
+
+- `serial_number`
+- `search`
+- `asset_category_id`
+- `brand_id`
+- `source_location_id`
+- `current_location_id`
+- `condition_status`
+- `created_by`
+- `date_from`
+- `date_to`
+- `sort_by`
+- `sort_dir`
+- `include_images`
+
+Catatan perilaku:
+
+- Nilai `include_images=true` atau `1` akan menyisipkan semua foto asset ke sheet Excel.
+- Nilai `include_images=false` atau `0` akan membuat file lebih ringan tanpa embed gambar.
+- Export tetap menyertakan `photo_count`, `primary_photo_url`, dan `photo_urls` walaupun `include_images=false`.
+- Kolom `search` akan mencari ke `serial_number`, `brand`, `asset_category`, `source_location`, `current_location`, dan `model_name`.
+
+Contoh request:
+
+```http
+GET /api/v1/assets/export?asset_category_id=2&brand_id=1&source_location_id=2&current_location_id=3&search=dell&include_images=true
+Authorization: Bearer <token>
+```
 
 ## Ringkasan API Workspace
 
@@ -170,6 +209,7 @@ Jalankan test:
 
 ```bash
 vendor\bin\phpunit tests\feature\Api\AssetPhotoManagementTest.php
+vendor\bin\phpunit tests\feature\Api\AuthAndAssetWorkflowTest.php
 ```
 
 ## Tabel Yang Dibuat
@@ -210,5 +250,6 @@ Seeder development user menambahkan akun berikut:
 - `assets.serial_number` dibuat unik secara database.
 - Endpoint foto publik:
   `POST /api/v1/uploads/photos`, `GET /api/v1/assets/{assetId}/download-photo/{photoId}`, dan `GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}`.
+- Endpoint export asset tersedia di `GET /api/v1/assets/export` dan mengikuti filter list asset plus `include_images`.
 - Fondasi API yang sudah tersedia saat ini:
   `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, dan endpoint `GET /api/v1/masters/*`.
