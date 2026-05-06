@@ -36,11 +36,11 @@ Jika gagal validasi atau authorization:
 ## Role dan Akses
 
 - `scanner`
-  Scanner lapangan. Bisa login, list/detail asset, create asset, update field non-sensitif, create inline master tertentu, scan workspace, dan register asset dari workspace.
+  Scanner lapangan. Bisa login, list/detail asset, create asset, update field non-sensitif, create inline master tertentu, scan workspace, register asset dari workspace, membaca folder, dan assign asset ke folder yang sudah ada.
 - `supervisor`
-  Semua akses scanner ditambah edit field sensitif seperti `serial_number`, melihat audit log global, serta menambah/menghapus foto asset existing.
+  Semua akses scanner ditambah edit field sensitif seperti `serial_number`, melihat audit log global, menambah atau menghapus foto asset existing, dan mengelola folder.
 - `admin`
-  Semua akses asset dan master data.
+  Semua akses asset, folder, dan master data.
 
 ## Field Asset Yang Penting
 
@@ -241,6 +241,7 @@ Response detail asset sekarang menyertakan:
 
 - relasi brand/category/location
 - `current_location_detail`
+- `folders`
 - daftar foto
 - movement history
 - permission flags per user
@@ -494,7 +495,224 @@ Endpoint ini publik:
 GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}
 ```
 
-## 6. Master Data
+## 6. Folder / Group Asset
+
+Fitur folder dipakai untuk mengelompokkan asset secara fleksibel. Satu asset bisa punya banyak folder, dan satu folder bisa berisi banyak asset.
+
+Folder juga mendukung hierarki lewat `parent_id`.
+
+Contoh pemakaian:
+
+- folder `Lokasi`
+- child folder `Gudang Kasir FA`
+- child folder `HO`
+- folder `Kondisi`
+- child folder `Perlu Servis`
+
+Aturan validasi:
+
+- kombinasi `name + type + parent_id` tidak boleh duplicate
+- relasi `asset_id + folder_id` tidak boleh duplicate
+- folder tidak boleh menjadi parent dirinya sendiri atau membentuk cycle
+
+### List folder
+
+```http
+GET /api/v1/folders?type=lokasi&search=gudang
+Authorization: Bearer <token>
+```
+
+Filter yang didukung:
+
+- `search`
+- `type`
+- `parent_id`
+- `asset_id`
+
+Response setiap folder menyertakan:
+
+- `asset_count`
+- `children_count`
+- info parent jika ada
+
+### Tree folder
+
+```http
+GET /api/v1/folders/tree
+Authorization: Bearer <token>
+```
+
+Dipakai frontend untuk membangun tree selector tanpa merakit sendiri parent-child relation.
+
+### Detail folder
+
+```http
+GET /api/v1/folders/{folderId}
+Authorization: Bearer <token>
+```
+
+Response detail menyertakan:
+
+- info parent
+- `asset_count`
+- `children_count`
+- `breadcrumbs`
+
+### Create folder
+
+```http
+POST /api/v1/folders
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Gudang Kasir FA",
+  "type": "lokasi",
+  "parent_id": 1
+}
+```
+
+Catatan:
+
+- `scanner` tidak bisa create folder
+- create, update, delete folder ditujukan untuk `supervisor` dan `admin`
+
+### Update folder
+
+```http
+PUT /api/v1/folders/{folderId}
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Gudang Kasir Front Area",
+  "type": "lokasi",
+  "parent_id": 1
+}
+```
+
+### Delete folder
+
+```http
+DELETE /api/v1/folders/{folderId}
+Authorization: Bearer <token>
+```
+
+Perilaku:
+
+- relasi asset di pivot akan ikut terhapus otomatis
+- child folder akan diset `parent_id = null`
+
+### List asset per folder
+
+Endpoint penting untuk halaman folder detail.
+
+```http
+GET /api/v1/folders/{folderId}/assets?page=1&per_page=20
+Authorization: Bearer <token>
+```
+
+Response item asset menyertakan minimal:
+
+- `id`
+- `serial_number`
+- `model_name`
+- `current_location_detail`
+- relasi brand/category/location
+- `photo_url`
+
+Dengan begitu frontend bisa langsung membuka detail asset dari `id` yang dikembalikan.
+
+### Tambah banyak asset ke satu folder
+
+```http
+POST /api/v1/folders/{folderId}/assets
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "asset_ids": [10, 11, 12]
+}
+```
+
+Catatan:
+
+- duplicate `asset_ids` di request akan dibersihkan backend
+- relasi yang sudah ada tidak akan dibuat ulang
+
+### Hapus satu asset dari folder
+
+```http
+DELETE /api/v1/folders/{folderId}/assets/{assetId}
+Authorization: Bearer <token>
+```
+
+### List folder milik satu asset
+
+Endpoint ini bisa dipakai frontend untuk refresh assignment folder tanpa mengambil detail asset penuh.
+
+```http
+GET /api/v1/assets/{assetId}/folders
+Authorization: Bearer <token>
+```
+
+### Sinkronisasi penuh folder asset
+
+Endpoint ini paling cocok untuk UI multi-select pada halaman detail asset.
+
+```http
+PUT /api/v1/assets/{assetId}/folders
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "folder_ids": [1, 4, 7]
+}
+```
+
+Perilaku:
+
+- backend akan mengganti seluruh assignment folder asset menjadi daftar terbaru
+- jika `folder_ids` kosong, semua folder asset akan dilepas
+
+### Tambah folder ke asset tanpa mengganti assignment lama
+
+```http
+POST /api/v1/assets/{assetId}/folders
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "folder_ids": [4, 7]
+}
+```
+
+atau:
+
+```json
+{
+  "folder_id": 4
+}
+```
+
+### Hapus satu folder dari asset
+
+```http
+DELETE /api/v1/assets/{assetId}/folders/{folderId}
+Authorization: Bearer <token>
+```
+
+## 7. Master Data
 
 Endpoint baca master:
 
@@ -587,7 +805,7 @@ Content-Type: application/json
 }
 ```
 
-## 7. History dan Dashboard
+## 8. History dan Dashboard
 
 ### Create global scan log
 
@@ -640,7 +858,7 @@ GET /api/v1/dashboard/summary
 Authorization: Bearer <token>
 ```
 
-## 8. Rekomendasi Flow Frontend
+## 9. Rekomendasi Flow Frontend
 
 ### Flow create asset biasa
 
@@ -665,7 +883,22 @@ Authorization: Bearer <token>
 3. Jika perlu, kirim `current_location_id`, `current_location_detail`, dan `condition_status`
 4. Backend akan update asset master otomatis dan tetap menyimpan jejak di workspace item
 
-## 9. Verifikasi Lokal
+### Flow assignment folder dari detail asset
+
+1. Ambil detail asset atau `GET /assets/{assetId}/folders`
+2. Ambil tree folder dari `GET /folders/tree`
+3. User memilih folder yang diinginkan
+4. Panggil `PUT /assets/{assetId}/folders` dengan daftar `folder_ids` final
+5. Gunakan response untuk refresh chips atau selected state
+
+### Flow halaman folder detail
+
+1. Ambil detail folder via `GET /folders/{folderId}`
+2. Ambil asset di folder via `GET /folders/{folderId}/assets`
+3. Gunakan `id` asset pada response untuk membuka halaman detail asset
+4. Jika perlu tambah banyak asset sekaligus, pakai `POST /folders/{folderId}/assets`
+
+## 10. Verifikasi Lokal
 
 Command yang relevan:
 

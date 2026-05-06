@@ -11,6 +11,7 @@ Backend API Asetify berbasis CodeIgniter 4 untuk inventaris aset IT, upload foto
   - [`docs/notes/2026-05-04-workspace-flow-update.md`](docs/notes/2026-05-04-workspace-flow-update.md)
   - [`docs/notes/2026-05-05-asset-excel-export.md`](docs/notes/2026-05-05-asset-excel-export.md)
   - [`docs/notes/2026-05-06-workspace-asset-location-detail-update.md`](docs/notes/2026-05-06-workspace-asset-location-detail-update.md)
+  - [`docs/notes/2026-05-06-folder-feature-update.md`](docs/notes/2026-05-06-folder-feature-update.md)
 
 ## Fitur Inti
 
@@ -21,6 +22,7 @@ Backend API Asetify berbasis CodeIgniter 4 untuk inventaris aset IT, upload foto
 - history scan
 - audit log perubahan aset
 - workspace receipt untuk asset existing maupun asset baru
+- folder/group aset dengan struktur parent-child
 
 ## Perubahan Penting Saat Ini
 
@@ -43,6 +45,21 @@ Backend API Asetify berbasis CodeIgniter 4 untuk inventaris aset IT, upload foto
 - Untuk item yang belum ada di master asset, scan workspace sekarang harus menyimpan draft field asset yang dibutuhkan agar item bisa langsung diregister kemudian.
 - Payload workspace memakai `current_location_id` agar konsisten dengan payload asset.
 - `target_location_id` masih didukung sebagai alias lama, tetapi jika dikirim bersamaan dengan `current_location_id` nilainya harus sama.
+
+### Folder
+
+- Satu asset sekarang bisa masuk ke banyak folder.
+- Satu folder bisa berisi banyak asset yang berbeda.
+- Folder mendukung struktur hirarki lewat `parent_id`.
+- Detail asset sekarang menyertakan daftar folder yang sedang terpasang.
+- Backend menyediakan endpoint:
+  - kelola folder
+  - tree folder
+  - assignment folder ke asset dari sisi asset
+  - assignment asset ke folder dari sisi folder
+  - list asset per folder
+- Validasi folder mencegah duplicate folder dengan kombinasi `name + type + parent_id` yang sama.
+- Pivot `asset_folders` mencegah relasi asset-folder double.
 
 ## Ringkasan Endpoint
 
@@ -78,6 +95,22 @@ Backend API Asetify berbasis CodeIgniter 4 untuk inventaris aset IT, upload foto
 - `GET /api/v1/workspaces/{workspaceId}`
 - `POST /api/v1/workspaces/{workspaceId}/scan`
 - `POST /api/v1/workspaces/{workspaceId}/items/{workspaceItemId}/register-asset`
+
+### Folder
+
+- `GET /api/v1/folders`
+- `GET /api/v1/folders/tree`
+- `POST /api/v1/folders`
+- `GET /api/v1/folders/{folderId}`
+- `PUT /api/v1/folders/{folderId}`
+- `DELETE /api/v1/folders/{folderId}`
+- `GET /api/v1/folders/{folderId}/assets`
+- `POST /api/v1/folders/{folderId}/assets`
+- `DELETE /api/v1/folders/{folderId}/assets/{assetId}`
+- `GET /api/v1/assets/{assetId}/folders`
+- `PUT /api/v1/assets/{assetId}/folders`
+- `POST /api/v1/assets/{assetId}/folders`
+- `DELETE /api/v1/assets/{assetId}/folders/{folderId}`
 
 ### Master Data
 
@@ -194,6 +227,8 @@ Migration saat ini mencakup:
 - `asset_movements`
 - `asset_audit_logs`
 - `asset_models`
+- `folders`
+- `asset_folders`
 - `asset_workspaces`
 - `asset_workspace_items`
 - `asset_workspace_item_photos`
@@ -220,4 +255,5 @@ Seeder development user menambahkan akun berikut:
 - `asset_photos.file_size_bytes` dibatasi dengan check constraint `<= 1048576` sesuai requirement foto maksimal 1 MB.
 - `asset_photo_uploads.file_size_bytes` juga dibatasi `<= 1048576`.
 - `assets.serial_number` dibuat unik secara database.
+- `asset_folders` memakai primary key gabungan `asset_id + folder_id` untuk mencegah relasi duplikat.
 - Panduan request dan contoh payload yang lebih lengkap ada di [`docs/api-usage.md`](docs/api-usage.md).

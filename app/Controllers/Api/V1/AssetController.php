@@ -8,6 +8,7 @@ use App\Models\AssetPhotoModel;
 use App\Services\AssetExcelExportService;
 use App\Services\AssetService;
 use App\Services\AssetAuthorizationService;
+use App\Services\FolderService;
 use App\Services\PhotoUploadService;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -643,7 +644,10 @@ class AssetController extends BaseApiController
 
     private function formatAssetDetail(array $asset): array
     {
-        return $this->attachAssetRelations($asset);
+        $asset = $this->attachAssetRelations($asset);
+        $asset['folders'] = isset($asset['id']) ? (new FolderService())->foldersForAsset((int) $asset['id']) : [];
+
+        return $asset;
     }
 
     private function buildAssetPhotoUrl(array $item): ?string

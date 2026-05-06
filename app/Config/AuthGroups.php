@@ -36,6 +36,9 @@ class AuthGroups extends ShieldAuthGroups
         'audit-logs.read'         => 'Can view audit logs',
         'dashboard.read'          => 'Can view dashboard summary',
         'users.manage'            => 'Can manage application users',
+        'folders.read'            => 'Can view folders and folder assets',
+        'folders.manage'          => 'Can create, update, and delete folders',
+        'folders.assign'          => 'Can assign assets into folders',
     ];
 
     public array $matrix = [
@@ -47,6 +50,8 @@ class AuthGroups extends ShieldAuthGroups
             'masters.create-inline',
             'scan-logs.read',
             'dashboard.read',
+            'folders.read',
+            'folders.assign',
         ],
         'supervisor' => [
             'assets.read',
@@ -59,6 +64,9 @@ class AuthGroups extends ShieldAuthGroups
             'scan-logs.read',
             'audit-logs.read',
             'dashboard.read',
+            'folders.read',
+            'folders.manage',
+            'folders.assign',
         ],
         'admin' => [
             'assets.*',
@@ -67,6 +75,7 @@ class AuthGroups extends ShieldAuthGroups
             'audit-logs.read',
             'dashboard.read',
             'users.manage',
+            'folders.*',
         ],
     ];
 }

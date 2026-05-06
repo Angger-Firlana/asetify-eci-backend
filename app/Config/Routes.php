@@ -23,6 +23,10 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('assets/export', 'AssetController::export');
         $routes->get('assets/(:num)', 'AssetController::show/$1');
         $routes->put('assets/(:num)', 'AssetController::update/$1');
+        $routes->get('assets/(:num)/folders', 'FolderController::assetFolders/$1');
+        $routes->put('assets/(:num)/folders', 'FolderController::syncAssetFolders/$1');
+        $routes->post('assets/(:num)/folders', 'FolderController::addAssetFolders/$1');
+        $routes->delete('assets/(:num)/folders/(:num)', 'FolderController::removeAssetFolder/$1/$2');
         $routes->get('assets/(:num)/photos', 'AssetController::photos/$1');
         $routes->post('assets/(:num)/photos', 'AssetController::addPhotos/$1');
         $routes->delete('assets/(:num)/photos/(:num)', 'AssetController::deletePhoto/$1/$2');
@@ -49,5 +53,15 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('workspaces/(:num)', 'WorkspaceController::show/$1');
         $routes->post('workspaces/(:num)/scan', 'WorkspaceController::scan/$1');
         $routes->post('workspaces/(:num)/items/(:num)/register-asset', 'WorkspaceController::registerAsset/$1/$2');
+
+        $routes->get('folders', 'FolderController::index');
+        $routes->get('folders/tree', 'FolderController::tree');
+        $routes->post('folders', 'FolderController::create');
+        $routes->get('folders/(:num)', 'FolderController::show/$1');
+        $routes->put('folders/(:num)', 'FolderController::update/$1');
+        $routes->delete('folders/(:num)', 'FolderController::delete/$1');
+        $routes->get('folders/(:num)/assets', 'FolderController::assets/$1');
+        $routes->post('folders/(:num)/assets', 'FolderController::attachAssets/$1');
+        $routes->delete('folders/(:num)/assets/(:num)', 'FolderController::detachAsset/$1/$2');
     });
 });

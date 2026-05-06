@@ -159,6 +159,26 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
         return $data;
     }
 
+    protected function createFolderFixture(string $name, ?string $type = null, ?int $parentId = null): array
+    {
+        $now = gmdate('Y-m-d H:i:s');
+
+        $this->db->table('folders')->insert([
+            'name' => $name,
+            'type' => $type,
+            'parent_id' => $parentId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        return [
+            'id' => (int) $this->db->insertID(),
+            'name' => $name,
+            'type' => $type,
+            'parent_id' => $parentId,
+        ];
+    }
+
     protected function userId(string $username): int
     {
         $row = $this->db->table('users')
@@ -251,6 +271,8 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
         }
 
         foreach ([
+            'folders',
+            'asset_folders',
             'asset_workspaces',
             'asset_workspace_items',
             'asset_workspace_item_photos',
@@ -281,6 +303,8 @@ abstract class ApiFeatureTestCase extends CIUnitTestCase
         $this->db->disableForeignKeyChecks();
 
         foreach ([
+            'asset_folders',
+            'folders',
             'asset_workspace_item_scans',
             'asset_workspace_item_photos',
             'asset_workspace_items',
