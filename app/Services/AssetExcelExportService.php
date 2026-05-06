@@ -15,6 +15,7 @@ class AssetExcelExportService
         'Serial Number',
         'Lokasi Asal',
         'Lokasi Saat Ini',
+        'Detail Lokasi Saat Ini',
         'Kondisi',
         'Catatan',
         'Photo URL',
@@ -62,6 +63,7 @@ class AssetExcelExportService
                 (string) ($asset['serial_number'] ?? ''),
                 (string) ($asset['source_location_name'] ?? ''),
                 (string) ($asset['current_location_name'] ?? ''),
+                (string) ($asset['current_location_detail'] ?? ''),
                 (string) ($asset['condition_status'] ?? ''),
                 (string) ($asset['notes'] ?? ''),
                 $primaryPhotoUrl,
@@ -214,6 +216,7 @@ class AssetExcelExportService
             $columnNumber = $index + 1;
             $width = match ($header) {
                 'Catatan' => 40,
+                'Detail Lokasi Saat Ini' => 26,
                 'Photo URL' => 30,
                 'Foto' => 18,
                 'Serial Number' => 20,

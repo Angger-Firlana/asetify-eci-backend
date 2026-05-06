@@ -85,6 +85,7 @@ class AssetController extends BaseApiController
             'model_name'          => 'permit_empty|string|max_length[150]',
             'source_location_id'  => 'required|integer',
             'current_location_id' => 'required|integer',
+            'current_location_detail' => 'permit_empty|string|max_length[255]',
             'condition_status'    => 'required|in_list[good,bad]',
             'notes'               => 'permit_empty|string',
             'scan_method'         => 'permit_empty|in_list[barcode,manual]',
@@ -153,6 +154,7 @@ class AssetController extends BaseApiController
             'source_locations.name AS source_location_name',
             'current_locations.name AS current_location',
             'current_locations.name AS current_location_name',
+            'assets.current_location_detail',
             'assets.condition_status',
             'primary_photo.id AS photo_id',
         ]);
@@ -218,6 +220,7 @@ class AssetController extends BaseApiController
             'brand_id'            => 'permit_empty|integer',
             'source_location_id'  => 'permit_empty|integer',
             'current_location_id' => 'permit_empty|integer',
+            'current_location_detail' => 'permit_empty|string|max_length[255]',
             'condition_status'    => 'permit_empty|in_list[good,bad]',
             'created_by'          => 'permit_empty|integer',
             'date_from'           => 'permit_empty|regex_match[/^\\d{4}-\\d{2}-\\d{2}$/]',
@@ -246,6 +249,7 @@ class AssetController extends BaseApiController
             'source_locations.name AS source_location_name',
             'assets.current_location_id',
             'current_locations.name AS current_location_name',
+            'assets.current_location_detail',
             'assets.condition_status',
             'assets.notes',
             'assets.created_by',
@@ -338,6 +342,7 @@ class AssetController extends BaseApiController
             'model_name'          => 'permit_empty|string|max_length[150]',
             'source_location_id'  => 'permit_empty|integer',
             'current_location_id' => 'permit_empty|integer',
+            'current_location_detail' => 'permit_empty|string|max_length[255]',
             'condition_status'    => 'permit_empty|in_list[good,bad]',
             'notes'               => 'permit_empty|string',
             'scan_method'         => 'permit_empty|in_list[barcode,manual]',
@@ -550,6 +555,7 @@ class AssetController extends BaseApiController
                 ->orLike('source_locations.name', $search)
                 ->orLike('current_locations.name', $search)
                 ->orLike('assets.model_name', $search)
+                ->orLike('assets.current_location_detail', $search)
                 ->groupEnd();
         }
 

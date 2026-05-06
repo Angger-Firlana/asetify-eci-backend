@@ -13,6 +13,7 @@ class AssetAuthorizationService
         'model_name',
         'source_location_id',
         'current_location_id',
+        'current_location_detail',
         'condition_status',
         'notes',
     ];
@@ -24,6 +25,7 @@ class AssetAuthorizationService
         'model_name',
         'source_location_id',
         'current_location_id',
+        'current_location_detail',
         'condition_status',
         'notes',
     ];

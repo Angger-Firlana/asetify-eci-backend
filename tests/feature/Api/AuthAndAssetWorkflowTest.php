@@ -88,6 +88,10 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
             'serial_number' => $serial,
             'result_status' => 'success',
         ]);
+        $this->seeInDatabase('assets', [
+            'id' => $assetId,
+            'current_location_detail' => 'Rak Web 01',
+        ]);
         $this->seeInDatabase('asset_movements', [
             'asset_id' => $assetId,
             'moved_by' => $scannerId,
@@ -187,6 +191,7 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
             ->put('api/v1/assets/' . $asset['id'], [
                 'notes' => 'Scanner updated note',
                 'current_location_id' => (int) $newLocationId,
+                'current_location_detail' => 'Rak Kasir FA',
                 'scan_method' => 'manual',
                 'app_platform' => 'web',
                 'device_info' => 'PHPUnit',
@@ -200,10 +205,12 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertSame('Laptop', $json['data']['relations']['asset_category']['name']);
         $this->assertSame('Gudang Pusat', $json['data']['relations']['source_location']['name']);
         $this->assertSame('Toko Bandung', $json['data']['relations']['current_location']['name']);
+        $this->assertSame('Rak Kasir FA', $json['data']['current_location_detail']);
         $this->seeInDatabase('assets', [
             'id' => $asset['id'],
             'notes' => 'Scanner updated note',
             'current_location_id' => (int) $newLocationId,
+            'current_location_detail' => 'Rak Kasir FA',
         ]);
         $this->seeInDatabase('asset_movements', [
             'asset_id' => $asset['id'],
@@ -213,6 +220,12 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->seeInDatabase('asset_audit_logs', [
             'asset_id' => $asset['id'],
             'field_name' => 'notes',
+            'action' => 'update',
+            'changed_by' => $scannerId,
+        ]);
+        $this->seeInDatabase('asset_audit_logs', [
+            'asset_id' => $asset['id'],
+            'field_name' => 'current_location_detail',
             'action' => 'update',
             'changed_by' => $scannerId,
         ]);
@@ -271,6 +284,7 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $this->assertStringContainsString('Asset Kategori', $entries['xl/worksheets/sheet1.xml']);
         $this->assertStringContainsString('Lokasi Asal', $entries['xl/worksheets/sheet1.xml']);
         $this->assertStringContainsString('Lokasi Saat Ini', $entries['xl/worksheets/sheet1.xml']);
+        $this->assertStringContainsString('Detail Lokasi Saat Ini', $entries['xl/worksheets/sheet1.xml']);
         $this->assertStringContainsString('Catatan', $entries['xl/worksheets/sheet1.xml']);
         $this->assertStringContainsString('Photo URL', $entries['xl/worksheets/sheet1.xml']);
         $this->assertStringContainsString('Foto', $entries['xl/worksheets/sheet1.xml']);

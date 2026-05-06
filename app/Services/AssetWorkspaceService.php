@@ -73,7 +73,9 @@ class AssetWorkspaceService
             $this->assertLocationExists((int) $payload['source_location_id'], 'source_location_id');
         }
 
-        if (isset($payload['target_location_id'])) {
+        if (isset($payload['current_location_id'])) {
+            $this->assertLocationExists((int) $payload['current_location_id'], 'current_location_id');
+        } elseif (isset($payload['target_location_id'])) {
             $this->assertLocationExists((int) $payload['target_location_id'], 'target_location_id');
         }
 
@@ -93,6 +95,29 @@ class AssetWorkspaceService
         try {
             if ($asset !== null) {
                 $this->syncMatchedAsset($asset, $workspace, $payload, (int) $user->id, $now);
+            } else {
+                $draftPayload = [
+                    'asset_category_id'   => $payload['asset_category_id'] ?? ($existingItem['asset_category_id'] ?? null),
+                    'brand_id'            => $payload['brand_id'] ?? ($existingItem['brand_id'] ?? null),
+                    'model_name'          => $payload['model_name'] ?? ($existingItem['model_name'] ?? null),
+                    'source_location_id'  => $payload['source_location_id'] ?? ($existingItem['source_location_id'] ?? (int) $workspace['source_location_id']),
+                    'current_location_id' => $payload['current_location_id'] ?? $payload['target_location_id'] ?? ($existingItem['target_location_id'] ?? (int) $workspace['target_location_id']),
+                    'condition_status'    => $payload['condition_status'] ?? ($existingItem['condition_status'] ?? null),
+                ];
+
+                $missingFields = [];
+                foreach (['asset_category_id', 'brand_id', 'model_name', 'source_location_id', 'current_location_id', 'condition_status'] as $field) {
+                    $value = $draftPayload[$field] ?? null;
+                    if ($value === null || $value === '') {
+                        $missingFields[] = $field;
+                    }
+                }
+
+                if ($missingFields !== []) {
+                    throw new RuntimeException(
+                        'Workspace item draft is missing required asset fields: ' . implode(', ', $missingFields)
+                    );
+                }
             }
 
             $itemData = [
@@ -105,7 +130,8 @@ class AssetWorkspaceService
                 'brand_id'           => $asset['brand_id'] ?? (isset($payload['brand_id']) ? (int) $payload['brand_id'] : ($existingItem['brand_id'] ?? null)),
                 'model_name'         => $asset['model_name'] ?? ($payload['model_name'] ?? ($existingItem['model_name'] ?? null)),
                 'source_location_id' => isset($payload['source_location_id']) ? (int) $payload['source_location_id'] : ($existingItem['source_location_id'] ?? (int) $workspace['source_location_id']),
-                'target_location_id' => isset($payload['target_location_id']) ? (int) $payload['target_location_id'] : ($existingItem['target_location_id'] ?? (int) $workspace['target_location_id']),
+                'target_location_id' => isset($payload['current_location_id']) ? (int) $payload['current_location_id'] : (isset($payload['target_location_id']) ? (int) $payload['target_location_id'] : ($existingItem['target_location_id'] ?? (int) $workspace['target_location_id'])),
+                'current_location_detail' => $payload['current_location_detail'] ?? ($asset['current_location_detail'] ?? ($existingItem['current_location_detail'] ?? null)),
                 'condition_status'   => $payload['condition_status'] ?? ($asset['condition_status'] ?? ($existingItem['condition_status'] ?? null)),
                 'notes'              => $payload['notes'] ?? ($existingItem['notes'] ?? null),
                 'scanned_by'         => (int) $user->id,
@@ -210,7 +236,8 @@ class AssetWorkspaceService
             'brand_id'            => isset($payload['brand_id']) ? (int) $payload['brand_id'] : ($workspaceItem['brand_id'] ?? null),
             'model_name'          => $payload['model_name'] ?? ($workspaceItem['model_name'] ?? null),
             'source_location_id'  => isset($payload['source_location_id']) ? (int) $payload['source_location_id'] : ($workspaceItem['source_location_id'] ?? (int) $workspace['source_location_id']),
-            'current_location_id' => isset($payload['current_location_id']) ? (int) $payload['current_location_id'] : ($workspaceItem['target_location_id'] ?? (int) $workspace['target_location_id']),
+            'current_location_id' => isset($payload['current_location_id']) ? (int) $payload['current_location_id'] : (isset($payload['target_location_id']) ? (int) $payload['target_location_id'] : ($workspaceItem['target_location_id'] ?? (int) $workspace['target_location_id'])),
+            'current_location_detail' => $payload['current_location_detail'] ?? ($workspaceItem['current_location_detail'] ?? null),
             'condition_status'    => $payload['condition_status'] ?? ($workspaceItem['condition_status'] ?? null),
             'notes'               => $payload['notes'] ?? ($workspaceItem['notes'] ?? null),
             'scan_method'         => $payload['scan_method'] ?? ($workspaceItem['scan_method'] ?? 'manual'),
@@ -222,7 +249,7 @@ class AssetWorkspaceService
         ];
 
         $missingFields = [];
-        foreach (['asset_category_id', 'brand_id', 'source_location_id', 'current_location_id', 'condition_status'] as $field) {
+        foreach (['asset_category_id', 'brand_id', 'model_name', 'source_location_id', 'current_location_id', 'condition_status'] as $field) {
             if ($assetPayload[$field] === null || $assetPayload[$field] === '') {
                 $missingFields[] = $field;
             }
@@ -246,6 +273,7 @@ class AssetWorkspaceService
                 'model_name'         => $asset['model_name'] ?? null,
                 'source_location_id' => (int) $asset['source_location_id'],
                 'target_location_id' => (int) $asset['current_location_id'],
+                'current_location_detail' => $asset['current_location_detail'] ?? null,
                 'condition_status'   => $asset['condition_status'],
                 'notes'              => $asset['notes'] ?? null,
                 'scanned_by'         => (int) $user->id,
@@ -294,7 +322,9 @@ class AssetWorkspaceService
         $movementModel   = model(AssetMovementModel::class);
         $auditLogModel   = model(AssetAuditLogModel::class);
         $changes         = [];
-        $targetLocation  = isset($payload['target_location_id']) ? (int) $payload['target_location_id'] : (int) $workspace['target_location_id'];
+        $targetLocation  = isset($payload['current_location_id'])
+            ? (int) $payload['current_location_id']
+            : (isset($payload['target_location_id']) ? (int) $payload['target_location_id'] : (int) $workspace['target_location_id']);
 
         if ((int) $asset['current_location_id'] !== $targetLocation) {
             $changes['current_location_id'] = [
@@ -307,6 +337,15 @@ class AssetWorkspaceService
             $changes['condition_status'] = [
                 'old' => $asset['condition_status'] ?? null,
                 'new' => $payload['condition_status'],
+            ];
+        }
+
+        if (array_key_exists('current_location_detail', $payload)
+            && (string) ($payload['current_location_detail'] ?? '') !== (string) ($asset['current_location_detail'] ?? '')
+        ) {
+            $changes['current_location_detail'] = [
+                'old' => $asset['current_location_detail'] ?? null,
+                'new' => $payload['current_location_detail'] !== '' ? $payload['current_location_detail'] : null,
             ];
         }
 

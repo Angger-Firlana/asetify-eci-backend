@@ -1,6 +1,18 @@
 # Asetify ECI Backend
 
-Backend API Asetify berbasis CodeIgniter 4 untuk flow listing aset IT:
+Backend API Asetify berbasis CodeIgniter 4 untuk inventaris aset IT, upload foto, export Excel, audit trail, dan workspace receipt.
+
+## Dokumentasi
+
+- Panduan penggunaan API lengkap: [`docs/api-usage.md`](docs/api-usage.md)
+- Catatan perubahan:
+  - [`docs/notes/2026-04-07-image-flow-update.md`](docs/notes/2026-04-07-image-flow-update.md)
+  - [`docs/notes/2026-04-08-location-endpoint-update.md`](docs/notes/2026-04-08-location-endpoint-update.md)
+  - [`docs/notes/2026-05-04-workspace-flow-update.md`](docs/notes/2026-05-04-workspace-flow-update.md)
+  - [`docs/notes/2026-05-05-asset-excel-export.md`](docs/notes/2026-05-05-asset-excel-export.md)
+  - [`docs/notes/2026-05-06-workspace-asset-location-detail-update.md`](docs/notes/2026-05-06-workspace-asset-location-detail-update.md)
+
+## Fitur Inti
 
 - check duplicate serial number
 - upload foto bukti aset
@@ -8,84 +20,66 @@ Backend API Asetify berbasis CodeIgniter 4 untuk flow listing aset IT:
 - export data aset ke Excel
 - history scan
 - audit log perubahan aset
+- workspace receipt untuk asset existing maupun asset baru
 
-## Ringkasan API Foto
+## Perubahan Penting Saat Ini
 
-Flow foto aset saat ini:
+### Asset
 
-- `POST /api/v1/uploads/photos` dapat dipanggil tanpa token untuk upload file gambar sementara.
-- `POST /api/v1/assets` tetap butuh bearer token, dan menerima `photo_upload_ids` array maupun `photo_upload_id` tunggal.
-- `POST /api/v1/assets/{assetId}/photos` tetap butuh bearer token.
-- `GET /api/v1/assets/{assetId}/download-photo/{photoId}` dapat dipanggil tanpa token untuk fetch gambar.
-- `GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}` dapat dipanggil tanpa token untuk fetch gambar item workspace.
+- Asset sekarang memiliki field `current_location_detail`.
+- Field ini dipakai untuk menyimpan titik fisik yang lebih presisi, misalnya `Rak kanan`, `Kasir FA laci 2`, atau `HO lemari A`.
+- Field tersebut ikut muncul di create, update, detail, list, dan export Excel.
 
-Catatan perilaku:
+### Workspace
 
-- Upload sementara disimpan di `writable/uploads/tmp`.
-- Saat asset dibuat atau foto ditambahkan ke asset existing, file dipindahkan ke `writable/uploads/assets`.
-- Link `photo_url` dan `download_url` sekarang aman dipakai langsung oleh frontend tanpa bearer token, termasuk `workspace item photo_url`.
-- Upload sementara hanya bisa dipakai sekali karena record upload akan ditandai `consumed_at`.
+- Workspace item sekarang menyimpan draft data asset yang lebih lengkap:
+  - `model_name`
+  - `source_location_id`
+  - `current_location_id`
+  - `current_location_detail`
+  - `asset_category_id`
+  - `brand_id`
+  - `condition_status`
+- Untuk item yang belum ada di master asset, scan workspace sekarang harus menyimpan draft field asset yang dibutuhkan agar item bisa langsung diregister kemudian.
+- Payload workspace memakai `current_location_id` agar konsisten dengan payload asset.
+- `target_location_id` masih didukung sebagai alias lama, tetapi jika dikirim bersamaan dengan `current_location_id` nilainya harus sama.
 
-## Ringkasan API Export Aset
+## Ringkasan Endpoint
 
-Flow export aset saat ini:
+### Auth
 
-- `GET /api/v1/assets/export` untuk download file Excel `.xlsx`.
-- Endpoint export tetap memerlukan bearer token.
-- Filter export mengikuti filter list asset, dengan tambahan opsi embed gambar ke file Excel.
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
 
-Query parameter yang didukung:
+### Foto
 
-- `serial_number`
-- `search`
-- `asset_category_id`
-- `brand_id`
-- `source_location_id`
-- `current_location_id`
-- `condition_status`
-- `created_by`
-- `date_from`
-- `date_to`
-- `sort_by`
-- `sort_dir`
-- `include_images`
+- `POST /api/v1/uploads/photos`
+- `GET /api/v1/assets/{assetId}/download-photo/{photoId}`
+- `GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}`
 
-Catatan perilaku:
+### Asset
 
-- Nilai `include_images=true` atau `1` akan menyisipkan semua foto asset ke sheet Excel.
-- Nilai `include_images=false` atau `0` akan membuat file lebih ringan tanpa embed gambar.
-- Export tetap menyertakan `photo_count`, `primary_photo_url`, dan `photo_urls` walaupun `include_images=false`.
-- Kolom `search` akan mencari ke `serial_number`, `brand`, `asset_category`, `source_location`, `current_location`, dan `model_name`.
+- `GET /api/v1/assets/check-sn`
+- `POST /api/v1/assets`
+- `GET /api/v1/assets`
+- `GET /api/v1/assets/export`
+- `GET /api/v1/assets/{assetId}`
+- `PUT /api/v1/assets/{assetId}`
+- `GET /api/v1/assets/{assetId}/photos`
+- `POST /api/v1/assets/{assetId}/photos`
+- `DELETE /api/v1/assets/{assetId}/photos/{photoId}`
+- `GET /api/v1/assets/{assetId}/audit-logs`
 
-Contoh request:
+### Workspace
 
-```http
-GET /api/v1/assets/export?asset_category_id=2&brand_id=1&source_location_id=2&current_location_id=3&search=dell&include_images=true
-Authorization: Bearer <token>
-```
+- `GET /api/v1/workspaces`
+- `POST /api/v1/workspaces`
+- `GET /api/v1/workspaces/{workspaceId}`
+- `POST /api/v1/workspaces/{workspaceId}/scan`
+- `POST /api/v1/workspaces/{workspaceId}/items/{workspaceItemId}/register-asset`
 
-## Ringkasan API Workspace
-
-Flow workspace penerimaan aset saat ini:
-
-- `GET /api/v1/workspaces` untuk list workspace.
-- `POST /api/v1/workspaces` untuk membuat workspace baru.
-- `GET /api/v1/workspaces/{workspaceId}` untuk melihat detail workspace beserta item yang sudah discan.
-- `POST /api/v1/workspaces/{workspaceId}/scan` untuk scan serial number ke workspace.
-- `POST /api/v1/workspaces/{workspaceId}/items/{workspaceItemId}/register-asset` untuk mempromosikan item workspace yang belum ada di master menjadi asset baru.
-
-Catatan perilaku:
-
-- Workspace memiliki `source_location` dan `target_location` yang wajib berbeda.
-- Workspace hanya bisa menerima scan saat status `active`.
-- User dengan group `scanner` hanya bisa melihat workspace yang dibuat olehnya sendiri.
-- Jika serial number ditemukan di master asset, item workspace akan dikaitkan ke asset existing dan perubahan lokasi atau kondisi akan disinkronkan ke asset master.
-- Jika serial number belum ditemukan, item workspace akan berstatus `ready_to_register` sampai dipromosikan menjadi asset baru.
-- Response item workspace sekarang menyertakan `photo_url` untuk primary photo item workspace jika tersedia, serta `matched_asset.photo_url` untuk asset yang sudah terhubung.
-
-## Ringkasan API Master
-
-Master data yang tersedia saat ini:
+### Master Data
 
 - `GET /api/v1/masters/brands`
 - `POST /api/v1/masters/brands`
@@ -98,31 +92,12 @@ Master data yang tersedia saat ini:
 - `GET /api/v1/masters/locations`
 - `POST /api/v1/masters/locations`
 
-Catatan perilaku:
+### Tracking dan Dashboard
 
-- Endpoint create master data tetap memerlukan bearer token.
-- `POST /api/v1/masters/brands`, `POST /api/v1/masters/types`, dan `POST /api/v1/masters/asset-categories` bisa dipakai oleh user dengan permission `masters.manage` atau `masters.create-inline`.
-- `POST /api/v1/masters/models` tetap khusus untuk user dengan permission `masters.manage`.
-- `POST /api/v1/masters/locations` hanya memerlukan bearer token tanpa permission khusus.
-- `type` memakai tabel `asset_categories`, karena schema saat ini tidak lagi memakai tabel `asset_types`.
-- `model` memakai tabel baru `asset_models` dan terhubung ke `brand_id`.
-- Flow create asset yang sekarang tetap menyimpan `model_name` sebagai string, jadi master `asset_models` dipakai sebagai referensi data input atau dropdown.
-- `name` dan `code` untuk master data baru dinormalisasi ke lowercase.
-
-Alur frontend searchable field yang direkomendasikan:
-
-1. Panggil endpoint GET master data dengan `search`, `id`, atau `name`.
-2. Jika hasil kosong, tampilkan tombol seperti `Tambah "xxx"`.
-3. Saat tombol diklik, panggil endpoint create yang sesuai:
-   - brand: `POST /api/v1/masters/brands`
-   - type/category: `POST /api/v1/masters/types` atau `POST /api/v1/masters/asset-categories`
-4. Gunakan object `data` dari response create secara langsung untuk auto-select opsi yang baru dibuat, karena response create sudah mengembalikan `id`, `name`, dan `code`.
-
-Skema database dan migration di repo ini mengikuti dokumen acuan pada folder parent:
-
-- `../docs/database-design.md`
-- `../docs/db-schema.sql`
-- `../docs/api-spec.md`
+- `POST /api/v1/scan-logs`
+- `GET /api/v1/scan-logs`
+- `GET /api/v1/audit-logs`
+- `GET /api/v1/dashboard/summary`
 
 ## Requirements
 
@@ -169,12 +144,6 @@ Jika ingin langsung menyiapkan akun development untuk login API:
 php spark db:seed DevelopmentUserSeeder
 ```
 
-Jika repo sudah sempat dimigrate sebelum endpoint upload foto ditambahkan, jalankan lagi:
-
-```bash
-php spark migrate --all
-```
-
 ## Production Deploy
 
 Gunakan file `env.production.example` sebagai baseline config server live. Nilai `app.baseURL`, kredensial database, dan `encryption.key` wajib diganti sebelum aplikasi menerima traffic.
@@ -192,12 +161,10 @@ Checklist minimum:
 Catatan penting:
 
 - Session file jangan diarahkan ke `null`. Biarkan `session.savePath` kosong agar tetap memakai `writable/session`.
-- `app.forceGlobalSecureRequests = true` mengasumsikan traffic sudah HTTPS. Jika server ada di balik reverse proxy/load balancer, konfigurasi proxy trusted IP juga harus benar.
-- Runtime production sekarang menonaktifkan `DBDebug` dan memaksa cookie secure di environment production.
+- `app.forceGlobalSecureRequests = true` mengasumsikan traffic sudah HTTPS. Jika server ada di balik reverse proxy atau load balancer, konfigurasi trusted proxy juga harus benar.
+- Runtime production menonaktifkan `DBDebug` dan memaksa cookie secure di environment production.
 
 ## Testing
-
-Feature test API sekarang sudah mencakup authorization untuk foto aset existing.
 
 Jika memakai MySQL untuk PHPUnit, siapkan database test terpisah sesuai `.env`:
 
@@ -208,8 +175,8 @@ php spark db:create "asetify-eci-be"
 Jalankan test:
 
 ```bash
-vendor\bin\phpunit tests\feature\Api\AssetPhotoManagementTest.php
-vendor\bin\phpunit tests\feature\Api\AuthAndAssetWorkflowTest.php
+vendor\bin\phpunit tests\feature\Api
+vendor\bin\phpunit tests\feature\CorsFilterTest.php
 ```
 
 ## Tabel Yang Dibuat
@@ -222,13 +189,17 @@ Migration saat ini mencakup:
 - `locations`
 - `assets`
 - `asset_photos`
+- `asset_photo_uploads`
 - `asset_scan_logs`
 - `asset_movements`
 - `asset_audit_logs`
+- `asset_models`
 - `asset_workspaces`
 - `asset_workspace_items`
 - `asset_workspace_item_photos`
 - `asset_workspace_item_scans`
+
+## Seeder Default
 
 Seeder awal mengisi contoh data untuk:
 
@@ -245,11 +216,8 @@ Seeder development user menambahkan akun berikut:
 ## Catatan
 
 - Package auth yang dipakai adalah `CodeIgniter Shield` dengan role `scanner`, `supervisor`, dan `admin`.
-- Upload foto sementara disimpan di `writable/uploads/tmp`, lalu dipindah ke `writable/uploads/assets` saat asset berhasil dibuat.
+- Upload foto sementara disimpan di `writable/uploads/tmp`, lalu dipindah ke `writable/uploads/assets` saat asset berhasil dibuat atau saat foto baru ditambahkan ke asset existing.
 - `asset_photos.file_size_bytes` dibatasi dengan check constraint `<= 1048576` sesuai requirement foto maksimal 1 MB.
+- `asset_photo_uploads.file_size_bytes` juga dibatasi `<= 1048576`.
 - `assets.serial_number` dibuat unik secara database.
-- Endpoint foto publik:
-  `POST /api/v1/uploads/photos`, `GET /api/v1/assets/{assetId}/download-photo/{photoId}`, dan `GET /api/v1/workspaces/items/{workspaceItemId}/download-photo/{photoId}`.
-- Endpoint export asset tersedia di `GET /api/v1/assets/export` dan mengikuti filter list asset plus `include_images`.
-- Fondasi API yang sudah tersedia saat ini:
-  `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, dan endpoint `GET /api/v1/masters/*`.
+- Panduan request dan contoh payload yang lebih lengkap ada di [`docs/api-usage.md`](docs/api-usage.md).

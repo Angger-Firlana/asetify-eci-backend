@@ -57,6 +57,7 @@ class AssetService
             'model_name'          => $payload['model_name'] ?? null,
             'source_location_id'  => (int) $payload['source_location_id'],
             'current_location_id' => (int) $payload['current_location_id'],
+            'current_location_detail' => $payload['current_location_detail'] ?? null,
             'condition_status'    => $payload['condition_status'],
             'notes'               => $payload['notes'] ?? null,
             'created_by'          => $userId,
@@ -219,6 +220,7 @@ class AssetService
             'model_name',
             'source_location_id',
             'current_location_id',
+            'current_location_detail',
             'condition_status',
             'notes',
         ];

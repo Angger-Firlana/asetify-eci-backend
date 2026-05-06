@@ -144,6 +144,12 @@ class WorkspaceController extends BaseApiController
             $payload = [];
         }
 
+        $normalizedPayload = $this->normalizeWorkspaceAssetPayload($payload);
+        if ($normalizedPayload instanceof ResponseInterface) {
+            return $normalizedPayload;
+        }
+        $payload = $normalizedPayload;
+
         if (isset($payload['serial_number'])) {
             $payload['serial_number'] = $this->normalizeSerialNumber((string) $payload['serial_number']);
         }
@@ -157,7 +163,9 @@ class WorkspaceController extends BaseApiController
             'brand_id'           => 'permit_empty|integer',
             'model_name'         => 'permit_empty|string|max_length[150]',
             'source_location_id' => 'permit_empty|integer',
+            'current_location_id'=> 'permit_empty|integer',
             'target_location_id' => 'permit_empty|integer',
+            'current_location_detail' => 'permit_empty|string|max_length[255]',
             'condition_status'   => 'permit_empty|in_list[good,bad]',
             'notes'              => 'permit_empty|string',
         ];
@@ -202,12 +210,20 @@ class WorkspaceController extends BaseApiController
             $payload = [];
         }
 
+        $normalizedPayload = $this->normalizeWorkspaceAssetPayload($payload);
+        if ($normalizedPayload instanceof ResponseInterface) {
+            return $normalizedPayload;
+        }
+        $payload = $normalizedPayload;
+
         $rules = [
             'asset_category_id'   => 'permit_empty|integer',
             'brand_id'            => 'permit_empty|integer',
             'model_name'          => 'permit_empty|string|max_length[150]',
             'source_location_id'  => 'permit_empty|integer',
             'current_location_id' => 'permit_empty|integer',
+            'target_location_id'  => 'permit_empty|integer',
+            'current_location_detail' => 'permit_empty|string|max_length[255]',
             'condition_status'    => 'permit_empty|in_list[good,bad]',
             'notes'               => 'permit_empty|string',
             'scan_method'         => 'permit_empty|in_list[barcode,manual]',
@@ -330,10 +346,12 @@ class WorkspaceController extends BaseApiController
             'id'                => (int) $item['id'],
             'workspace_id'      => (int) $item['workspace_id'],
             'serial_number'     => $item['serial_number'],
+            'model_name'        => $item['model_name'] ?? null,
             'photo_url'         => $this->buildWorkspaceItemPhotoUrl($item),
             'exists_in_assets'  => $assetId !== null,
             'match_status'      => $item['match_status'],
             'action_status'     => $item['action_status'],
+            'current_location_detail' => $item['current_location_detail'] ?? null,
             'scan_method'       => $item['scan_method'],
             'last_scan_at'      => $item['last_scan_at'] ?? null,
             'synced_at'         => $item['synced_at'] ?? null,
@@ -347,6 +365,7 @@ class WorkspaceController extends BaseApiController
                 'asset_category' => $this->relation($item['asset_category_id'] ?? null, $item['item_asset_category_name'] ?? null),
                 'brand'          => $this->relation($item['brand_id'] ?? null, $item['item_brand_name'] ?? null),
                 'source_location'=> $this->relation($item['source_location_id'] ?? null, $item['item_source_location_name'] ?? null),
+                'current_location'=> $this->relation($item['target_location_id'] ?? null, $item['item_target_location_name'] ?? null),
                 'target_location'=> $this->relation($item['target_location_id'] ?? null, $item['item_target_location_name'] ?? null),
             ],
             'matched_asset' => $assetId === null ? null : [
@@ -354,6 +373,7 @@ class WorkspaceController extends BaseApiController
                 'serial_number'    => $item['asset_serial_number'] ?? null,
                 'model_name'       => $item['asset_model_name'] ?? null,
                 'condition_status' => $item['asset_condition_status'] ?? null,
+                'current_location_detail' => $item['asset_current_location_detail'] ?? null,
                 'photo_url'        => $this->buildAssetPhotoUrl($item),
                 'relations'        => [
                     'asset_category'  => $this->relation($item['asset_asset_category_id'] ?? null, $item['asset_asset_category_name'] ?? null),
@@ -401,5 +421,29 @@ class WorkspaceController extends BaseApiController
         }
 
         return site_url('api/v1/workspaces/items/' . $workspaceItemId . '/download-photo/' . $photoId);
+    }
+
+    private function normalizeWorkspaceAssetPayload(array $payload): array|ResponseInterface
+    {
+        $hasTargetLocation = array_key_exists('target_location_id', $payload) && $payload['target_location_id'] !== null && $payload['target_location_id'] !== '';
+        $hasCurrentLocation = array_key_exists('current_location_id', $payload) && $payload['current_location_id'] !== null && $payload['current_location_id'] !== '';
+
+        if ($hasTargetLocation && $hasCurrentLocation && (string) $payload['target_location_id'] !== (string) $payload['current_location_id']) {
+            return $this->respondError(
+                'Validation failed',
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY,
+                ['current_location_id' => ['current_location_id and target_location_id must match when both are provided.']]
+            );
+        }
+
+        if ($hasCurrentLocation && ! $hasTargetLocation) {
+            $payload['target_location_id'] = $payload['current_location_id'];
+        }
+
+        if ($hasTargetLocation && ! $hasCurrentLocation) {
+            $payload['current_location_id'] = $payload['target_location_id'];
+        }
+
+        return $payload;
     }
 }

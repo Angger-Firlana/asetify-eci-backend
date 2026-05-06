@@ -19,6 +19,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
             'model_name'          => 'Latitude Workspace',
             'source_location_id'  => (int) $storeLocationId,
             'current_location_id' => (int) $storeLocationId,
+            'current_location_detail' => 'Rak Lama Bandung',
             'condition_status'    => 'good',
             'notes'               => 'Before workspace scan',
             'created_by'          => $scannerId,
@@ -50,6 +51,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
                 'scan_method' => 'barcode',
                 'app_platform' => 'web',
                 'device_info' => 'PHPUnit',
+                'current_location_detail' => 'Rak HO 01',
             ]);
 
         $scanResponse->assertStatus(201);
@@ -59,7 +61,10 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
         $this->assertSame('matched', $scanJson['data']['match_status']);
         $this->assertSame('asset_updated', $scanJson['data']['action_status']);
         $this->assertSame($assetId, $scanJson['data']['matched_asset']['id']);
+        $this->assertSame('Latitude Workspace', $scanJson['data']['model_name']);
+        $this->assertSame('Rak HO 01', $scanJson['data']['current_location_detail']);
         $this->assertSame('Kantor Jakarta', $scanJson['data']['matched_asset']['relations']['current_location']['name']);
+        $this->assertSame('Rak HO 01', $scanJson['data']['matched_asset']['current_location_detail']);
 
         $this->seeInDatabase('asset_workspace_items', [
             'workspace_id' => $workspaceId,
@@ -67,6 +72,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
             'asset_id' => $assetId,
             'match_status' => 'matched',
             'action_status' => 'asset_updated',
+            'current_location_detail' => 'Rak HO 01',
         ]);
         $this->seeInDatabase('asset_workspace_item_scans', [
             'workspace_id' => $workspaceId,
@@ -77,6 +83,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
         $this->seeInDatabase('assets', [
             'id' => $assetId,
             'current_location_id' => (int) $officeLocationId,
+            'current_location_detail' => 'Rak HO 01',
         ]);
         $this->seeInDatabase('asset_movements', [
             'asset_id' => $assetId,
@@ -121,6 +128,9 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
                 'asset_category_id' => $assetCategoryId,
                 'brand_id' => $brandId,
                 'model_name' => 'Latitude New',
+                'source_location_id' => (int) $storeLocationId,
+                'current_location_id' => (int) $officeLocationId,
+                'current_location_detail' => 'Rak Registrasi 02',
                 'condition_status' => 'good',
                 'notes' => 'Belum ada di master',
             ]);
@@ -132,6 +142,9 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
         $this->assertFalse($scanJson['data']['exists_in_assets']);
         $this->assertSame('not_found', $scanJson['data']['match_status']);
         $this->assertSame('ready_to_register', $scanJson['data']['action_status']);
+        $this->assertSame('Latitude New', $scanJson['data']['model_name']);
+        $this->assertSame('Rak Registrasi 02', $scanJson['data']['current_location_detail']);
+        $this->assertSame('Kantor Jakarta', $scanJson['data']['workspace_relations']['current_location']['name']);
 
         $this->seeInDatabase('asset_workspace_items', [
             'id' => $workspaceItemId,
@@ -139,6 +152,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
             'serial_number' => $serialNumber,
             'asset_id' => null,
             'action_status' => 'ready_to_register',
+            'current_location_detail' => 'Rak Registrasi 02',
         ]);
 
         $registerResponse = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
@@ -153,6 +167,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
 
         $this->assertTrue($registerJson['data']['exists_in_assets']);
         $this->assertSame('asset_registered', $registerJson['data']['action_status']);
+        $this->assertSame('Rak Registrasi 02', $registerJson['data']['matched_asset']['current_location_detail']);
 
         $assetId = (int) $this->grabFromDatabase('assets', 'id', ['serial_number' => $serialNumber]);
 
@@ -163,6 +178,7 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
             'brand_id' => $brandId,
             'source_location_id' => (int) $storeLocationId,
             'current_location_id' => (int) $officeLocationId,
+            'current_location_detail' => 'Rak Registrasi 02',
         ]);
         $this->seeInDatabase('asset_workspace_items', [
             'id' => $workspaceItemId,
@@ -203,6 +219,13 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
                 'serial_number' => $serialNumber,
                 'scan_method' => 'barcode',
                 'app_platform' => 'web',
+                'asset_category_id' => $this->idFromTableByCode('asset_categories', 'laptop'),
+                'brand_id' => $this->idFromTableByCode('brands', 'dell'),
+                'model_name' => 'Latitude Photo',
+                'source_location_id' => (int) $storeLocationId,
+                'current_location_id' => (int) $officeLocationId,
+                'current_location_detail' => 'Rak Foto 03',
+                'condition_status' => 'good',
             ]);
 
         $scanResponse->assertStatus(201);
@@ -244,6 +267,9 @@ final class WorkspaceFlowTest extends ApiFeatureTestCase
             site_url('api/v1/workspaces/items/' . $workspaceItemId . '/download-photo/' . $photoId),
             $showJson['data']['items'][0]['photo_url']
         );
+        $this->assertSame('Latitude Photo', $showJson['data']['items'][0]['model_name']);
+        $this->assertSame('Rak Foto 03', $showJson['data']['items'][0]['current_location_detail']);
+        $this->assertSame('Kantor Jakarta', $showJson['data']['items'][0]['workspace_relations']['current_location']['name']);
     }
 
     private function idFromTableByCode(string $table, string $code): int
