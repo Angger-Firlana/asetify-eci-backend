@@ -320,6 +320,51 @@ class FolderController extends BaseApiController
         );
     }
 
+    public function memberships(): ResponseInterface
+    {
+        $user = $this->requireFolderPermission('folders.read');
+        if ($user instanceof ResponseInterface) {
+            return $user;
+        }
+
+        $payload = $this->request->getJSON(true) ?? $this->request->getPost();
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+
+        $assetIds = $payload['asset_ids'] ?? null;
+        if (! is_array($assetIds)) {
+            return $this->respondError(
+                'Validation failed',
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY,
+                ['asset_ids' => ['The asset_ids field is required and must be an array.']]
+            );
+        }
+
+        if (count($assetIds) > 500) {
+            return $this->respondError(
+                'Validation failed',
+                ResponseInterface::HTTP_UNPROCESSABLE_ENTITY,
+                ['asset_ids' => ['Maximum 500 asset_ids per request.']]
+            );
+        }
+
+        $type = array_key_exists('type', $payload) ? trim((string) $payload['type']) : null;
+        if ($type === '') {
+            $type = null;
+        }
+
+        try {
+            $memberships = (new FolderService())->membershipsForAssets($assetIds, $type);
+
+            return $this->respondSuccess('Folder memberships fetched', [
+                'memberships' => $memberships,
+            ]);
+        } catch (RuntimeException $e) {
+            return $this->respondError($e->getMessage(), ResponseInterface::HTTP_UNPROCESSABLE_ENTITY);
+        }
+    }
+
     public function syncAssetFolders(int $assetId): ResponseInterface
     {
         $user = $this->requireAssetPermission($assetId, true);

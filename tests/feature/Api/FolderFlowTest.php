@@ -138,4 +138,49 @@ final class FolderFlowTest extends ApiFeatureTestCase
         $this->trackAssetPhotoFiles($assetOne['id']);
         $this->trackAssetPhotoFiles($assetTwo['id']);
     }
+
+    public function testBatchMembershipEndpointReturnsFolderIdsPerAsset(): void
+    {
+        $scannerId = $this->userId('scanner01');
+        $assetOne  = $this->createExistingAssetWithPhotos($scannerId, 1);
+        $assetTwo  = $this->createExistingAssetWithPhotos($scannerId, 1);
+        $folderA   = $this->createFolderFixture('Lokasi A', 'lokasi');
+        $folderB   = $this->createFolderFixture('Lokasi B', 'lokasi');
+
+        $token = $this->bearerTokenFor('admin');
+
+        $attachResponse = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->withBodyFormat('json')
+            ->post('api/v1/folders/' . $folderA['id'] . '/assets', [
+                'asset_ids' => [$assetOne['id'], $assetTwo['id']],
+            ]);
+        $attachResponse->assertStatus(201);
+
+        $attachSecondResponse = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->withBodyFormat('json')
+            ->post('api/v1/folders/' . $folderB['id'] . '/assets', [
+                'asset_ids' => [$assetOne['id']],
+            ]);
+        $attachSecondResponse->assertStatus(201);
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->withBodyFormat('json')
+            ->post('api/v1/folders/memberships', [
+                'asset_ids' => [$assetOne['id'], $assetTwo['id']],
+            ]);
+
+        $response->assertStatus(200);
+        $json = $this->parseJsonResponse($response);
+
+        $this->assertArrayHasKey('memberships', $json['data']);
+        $this->assertArrayHasKey((string) $assetOne['id'], $json['data']['memberships']);
+        $this->assertArrayHasKey((string) $assetTwo['id'], $json['data']['memberships']);
+
+        $this->assertContains($folderA['id'], $json['data']['memberships'][(string) $assetOne['id']]);
+        $this->assertContains($folderB['id'], $json['data']['memberships'][(string) $assetOne['id']]);
+        $this->assertContains($folderA['id'], $json['data']['memberships'][(string) $assetTwo['id']]);
+
+        $this->trackAssetPhotoFiles($assetOne['id']);
+        $this->trackAssetPhotoFiles($assetTwo['id']);
+    }
 }

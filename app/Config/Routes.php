@@ -63,5 +63,6 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->get('folders/(:num)/assets', 'FolderController::assets/$1');
         $routes->post('folders/(:num)/assets', 'FolderController::attachAssets/$1');
         $routes->delete('folders/(:num)/assets/(:num)', 'FolderController::detachAsset/$1/$2');
+        $routes->post('folders/memberships', 'FolderController::memberships');
     });
 });

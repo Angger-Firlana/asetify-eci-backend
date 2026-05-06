@@ -142,6 +142,57 @@ class FolderService
         return array_map([$this, 'formatAssetFolder'], model(AssetFolderModel::class)->findFoldersForAsset($assetId));
     }
 
+    public function membershipsForAssets(array $assetIds, ?string $type = null): array
+    {
+        $assetIds = $this->normalizeIdList($assetIds);
+        if ($assetIds === []) {
+            throw new RuntimeException('At least one asset_id is required.');
+        }
+
+        $builder = model(AssetFolderModel::class)->builder();
+        $builder->select([
+            'asset_folders.asset_id',
+            'asset_folders.folder_id',
+        ]);
+        $builder->join('folders', 'folders.id = asset_folders.folder_id');
+        $builder->whereIn('asset_folders.asset_id', $assetIds);
+
+        $type = $this->normalizeType($type);
+        if ($type !== null) {
+            $builder->where('folders.type', $type);
+        }
+
+        $rows = $builder->get()->getResultArray();
+
+        $map = [];
+        foreach ($assetIds as $assetId) {
+            $map[(string) $assetId] = [];
+        }
+
+        foreach ($rows as $row) {
+            $assetId  = (int) ($row['asset_id'] ?? 0);
+            $folderId = (int) ($row['folder_id'] ?? 0);
+            if ($assetId <= 0 || $folderId <= 0) {
+                continue;
+            }
+
+            $key = (string) $assetId;
+            if (! array_key_exists($key, $map)) {
+                $map[$key] = [];
+            }
+
+            $map[$key][] = $folderId;
+        }
+
+        foreach ($map as $key => $folderIds) {
+            $folderIds = array_values(array_unique(array_map('intval', $folderIds)));
+            sort($folderIds);
+            $map[$key] = $folderIds;
+        }
+
+        return $map;
+    }
+
     public function listFolders(array $filters = []): array
     {
         $rows          = $this->queryFolders($filters);
