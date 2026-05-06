@@ -662,6 +662,44 @@ GET /api/v1/assets/{assetId}/folders
 Authorization: Bearer <token>
 ```
 
+### Batch cek folder membership untuk banyak asset
+
+Endpoint ini dipakai untuk menghindari N+1 request pada halaman list asset (misalnya untuk menampilkan chip `Lokasi/Kategori/Kondisi` per asset).
+
+```http
+POST /api/v1/folders/memberships
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "asset_ids": [10, 11, 12],
+  "type": "lokasi"
+}
+```
+
+Catatan:
+
+- `type` opsional. Jika dikirim, backend hanya mengembalikan folder sesuai type tersebut.
+- Maksimum `500` asset id per request.
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Folder memberships fetched",
+  "data": {
+    "memberships": {
+      "10": [1, 4],
+      "11": [],
+      "12": [7]
+    }
+  }
+}
+```
+
 ### Sinkronisasi penuh folder asset
 
 Endpoint ini paling cocok untuk UI multi-select pada halaman detail asset.
@@ -890,6 +928,14 @@ Authorization: Bearer <token>
 3. User memilih folder yang diinginkan
 4. Panggil `PUT /assets/{assetId}/folders` dengan daftar `folder_ids` final
 5. Gunakan response untuk refresh chips atau selected state
+
+### Flow list asset + tampilkan folder chips tanpa N+1 request
+
+1. Ambil list asset via `GET /assets`
+2. Ambil semua `assetId` dari response list
+3. Panggil `POST /folders/memberships` dengan `asset_ids`
+4. (Opsional) jika UI spesifik, panggil dengan filter `type` per kategori, misalnya `lokasi` atau `kondisi`
+5. Render chip per asset berdasarkan `data.memberships[assetId]`
 
 ### Flow halaman folder detail
 
