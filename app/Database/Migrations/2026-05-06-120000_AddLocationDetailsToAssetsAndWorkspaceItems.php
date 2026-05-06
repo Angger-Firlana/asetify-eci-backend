@@ -14,7 +14,6 @@ class AddLocationDetailsToAssetsAndWorkspaceItems extends Migration
                     'type'       => 'VARCHAR',
                     'constraint' => 255,
                     'null'       => true,
-                    'after'      => 'current_location_id',
                 ],
             ]);
         }
@@ -25,7 +24,6 @@ class AddLocationDetailsToAssetsAndWorkspaceItems extends Migration
                     'type'       => 'VARCHAR',
                     'constraint' => 255,
                     'null'       => true,
-                    'after'      => 'target_location_id',
                 ],
             ]);
         }
