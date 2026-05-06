@@ -24,11 +24,13 @@ class AuthGroups extends ShieldAuthGroups
     ];
 
     public array $permissions = [
+        'assets.*'                => 'Can access all asset actions',
         'assets.read'             => 'Can view asset lists and details',
         'assets.create'           => 'Can create new assets',
         'assets.update'           => 'Can update non-sensitive asset fields',
         'assets.update-sensitive' => 'Can update serial number and other sensitive asset fields',
         'assets.photos.manage'    => 'Can add or delete photos on existing assets',
+        'masters.*'               => 'Can access all master data actions',
         'masters.read'            => 'Can read master data',
         'masters.create-inline'   => 'Can create inline master data options for searchable fields',
         'masters.manage'          => 'Can manage master data',
@@ -36,6 +38,7 @@ class AuthGroups extends ShieldAuthGroups
         'audit-logs.read'         => 'Can view audit logs',
         'dashboard.read'          => 'Can view dashboard summary',
         'users.manage'            => 'Can manage application users',
+        'folders.*'               => 'Can access all folder actions',
         'folders.read'            => 'Can view folders and folder assets',
         'folders.manage'          => 'Can create, update, and delete folders',
         'folders.assign'          => 'Can assign assets into folders',
@@ -70,12 +73,23 @@ class AuthGroups extends ShieldAuthGroups
         ],
         'admin' => [
             'assets.*',
+            'assets.read',
+            'assets.create',
+            'assets.update',
+            'assets.update-sensitive',
+            'assets.photos.manage',
             'masters.*',
+            'masters.read',
+            'masters.create-inline',
+            'masters.manage',
             'scan-logs.read',
             'audit-logs.read',
             'dashboard.read',
             'users.manage',
             'folders.*',
+            'folders.read',
+            'folders.manage',
+            'folders.assign',
         ],
     ];
 }

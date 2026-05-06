@@ -414,7 +414,7 @@ class FolderController extends BaseApiController
             return $this->respondError('Unauthorized', ResponseInterface::HTTP_UNAUTHORIZED);
         }
 
-        if (! $user->can($permission) && ! $user->can('folders.*')) {
+        if (! $this->userHasFolderPermission($user, $permission)) {
             return $this->respondError('Forbidden', ResponseInterface::HTTP_FORBIDDEN);
         }
 
@@ -442,15 +442,38 @@ class FolderController extends BaseApiController
             return $this->respondError('Forbidden', ResponseInterface::HTTP_FORBIDDEN);
         }
 
-        if (! $user->can('folders.assign') && ! $user->can('folders.read') && ! $user->can('folders.*')) {
+        if (
+            ! $this->userHasFolderPermission($user, 'folders.read')
+            && ! $this->userHasFolderPermission($user, 'folders.assign')
+        ) {
             return $this->respondError('Forbidden', ResponseInterface::HTTP_FORBIDDEN);
         }
 
-        if ($forUpdate && ! $user->can('folders.assign') && ! $user->can('folders.*')) {
+        if ($forUpdate && ! $this->userHasFolderPermission($user, 'folders.assign')) {
             return $this->respondError('Forbidden', ResponseInterface::HTTP_FORBIDDEN);
         }
 
         return $user;
+    }
+
+    private function userHasFolderPermission(User $user, string $permission): bool
+    {
+        if ($user->inGroup('admin')) {
+            return true;
+        }
+
+        $allowedByGroup = match ($permission) {
+            'folders.read'   => $user->inGroup('scanner', 'supervisor'),
+            'folders.assign' => $user->inGroup('scanner', 'supervisor'),
+            'folders.manage' => $user->inGroup('supervisor'),
+            default          => false,
+        };
+
+        if ($allowedByGroup) {
+            return true;
+        }
+
+        return $user->can($permission) || $user->can('folders.*');
     }
 
     private function relation(mixed $id, ?string $name): ?array

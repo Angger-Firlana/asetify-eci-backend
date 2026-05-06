@@ -42,7 +42,7 @@ class AssetWorkspaceItemModel extends Model
 
     public function queryWithRelations(): self
     {
-        return $this->select([
+        $select = [
                 'asset_workspace_items.id',
                 'asset_workspace_items.workspace_id',
                 'asset_workspace_items.serial_number',
@@ -80,21 +80,38 @@ class AssetWorkspaceItemModel extends Model
                 'assets.current_location_id AS asset_current_location_id',
                 'assets.current_location_detail AS asset_current_location_detail',
                 'asset_current_locations.name AS asset_current_location_name',
-                'primary_workspace_photo.id AS workspace_photo_id',
                 'primary_photo.id AS asset_photo_id',
-            ])
+        ];
+
+        $hasWorkspacePhotoTable = $this->db !== null && $this->db->tableExists('asset_workspace_item_photos');
+        if ($hasWorkspacePhotoTable) {
+            $select[] = 'primary_workspace_photo.id AS workspace_photo_id';
+        } else {
+            $select[] = 'NULL AS workspace_photo_id';
+        }
+
+        $builder = $this->select($select)
             ->join('users scan_users', 'scan_users.id = asset_workspace_items.scanned_by', 'left')
             ->join('asset_categories item_categories', 'item_categories.id = asset_workspace_items.asset_category_id', 'left')
             ->join('brands item_brands', 'item_brands.id = asset_workspace_items.brand_id', 'left')
             ->join('locations item_source_locations', 'item_source_locations.id = asset_workspace_items.source_location_id', 'left')
             ->join('locations item_target_locations', 'item_target_locations.id = asset_workspace_items.target_location_id', 'left')
-            ->join('asset_workspace_item_photos primary_workspace_photo', 'primary_workspace_photo.workspace_item_id = asset_workspace_items.id AND primary_workspace_photo.is_primary = 1', 'left')
             ->join('assets', 'assets.id = asset_workspace_items.asset_id', 'left')
             ->join('asset_categories', 'asset_categories.id = assets.asset_category_id', 'left')
             ->join('brands', 'brands.id = assets.brand_id', 'left')
             ->join('locations asset_source_locations', 'asset_source_locations.id = assets.source_location_id', 'left')
             ->join('locations asset_current_locations', 'asset_current_locations.id = assets.current_location_id', 'left')
             ->join('asset_photos primary_photo', 'primary_photo.asset_id = assets.id AND primary_photo.is_primary = 1', 'left');
+
+        if ($hasWorkspacePhotoTable) {
+            $builder->join(
+                'asset_workspace_item_photos primary_workspace_photo',
+                'primary_workspace_photo.workspace_item_id = asset_workspace_items.id AND primary_workspace_photo.is_primary = 1',
+                'left'
+            );
+        }
+
+        return $builder;
     }
 
     public function findDetail(int $workspaceId, int $itemId): ?array
