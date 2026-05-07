@@ -54,6 +54,12 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api\V1'], static funct
         $routes->post('workspaces/(:num)/scan', 'WorkspaceController::scan/$1');
         $routes->post('workspaces/(:num)/items/(:num)/register-asset', 'WorkspaceController::registerAsset/$1/$2');
 
+        $routes->get('users', 'UserController::index');
+        $routes->post('users', 'UserController::create');
+        $routes->get('users/(:num)', 'UserController::show/$1');
+        $routes->put('users/(:num)', 'UserController::update/$1');
+        $routes->delete('users/(:num)', 'UserController::delete/$1');
+
         $routes->get('folders', 'FolderController::index');
         $routes->get('folders/tree', 'FolderController::tree');
         $routes->post('folders', 'FolderController::create');

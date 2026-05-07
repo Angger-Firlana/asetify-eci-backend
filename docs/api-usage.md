@@ -114,6 +114,77 @@ POST /api/v1/auth/logout
 Authorization: Bearer <token>
 ```
 
+## 1b. User Management (Admin)
+
+Endpoint berikut hanya untuk `admin` (permission `users.manage`) untuk mengelola user aplikasi.
+
+### List user
+
+```http
+GET /api/v1/users?page=1&per_page=20&search=scanner
+Authorization: Bearer <token>
+```
+
+Query yang didukung:
+
+- `search` (mencari username/email)
+- `group` (`scanner|supervisor|admin`)
+- `active` (`true|false|1|0`)
+
+### Detail user
+
+```http
+GET /api/v1/users/{userId}
+Authorization: Bearer <token>
+```
+
+### Create user
+
+```http
+POST /api/v1/users
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "username": "scanner02",
+  "email": "scanner02@asetify.test",
+  "password": "Password123!",
+  "group": "scanner",
+  "active": 1
+}
+```
+
+Catatan:
+
+- `username` boleh kosong (user akan login pakai email), tapi disarankan tetap ada untuk kebutuhan UI.
+- `group` menentukan role utama.
+
+### Update user
+
+```http
+PUT /api/v1/users/{userId}
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+Contoh:
+
+```json
+{
+  "group": "supervisor",
+  "active": 0
+}
+```
+
+### Delete user
+
+```http
+DELETE /api/v1/users/{userId}
+Authorization: Bearer <token>
+```
+
 ## 2. Upload Foto Sementara
 
 Endpoint ini publik dan dipakai sebelum create asset atau add photo ke asset existing.
