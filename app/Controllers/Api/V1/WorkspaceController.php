@@ -52,16 +52,16 @@ class WorkspaceController extends BaseApiController
             ->limit($perPage, $offset)
             ->findAll();
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Workspaces fetched',
             array_map([$this, 'formatWorkspace'], $items),
-            ResponseInterface::HTTP_OK,
             [
                 'page'        => $page,
                 'per_page'    => $perPage,
                 'total'       => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 

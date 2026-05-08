@@ -250,11 +250,11 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $response->assertStatus(200);
         $json = $this->parseJsonResponse($response);
 
-        $this->assertCount(1, $json['data']);
-        $this->assertSame('Dell', $json['data'][0]['relations']['brand']['name']);
-        $this->assertSame('Laptop', $json['data'][0]['relations']['asset_category']['name']);
-        $this->assertSame('Gudang Pusat', $json['data'][0]['relations']['source_location']['name']);
-        $this->assertSame('Kantor Jakarta', $json['data'][0]['relations']['current_location']['name']);
+        $this->assertCount(1, $json['data']['items']);
+        $this->assertSame('Dell', $json['data']['items'][0]['relations']['brand']['name']);
+        $this->assertSame('Laptop', $json['data']['items'][0]['relations']['asset_category']['name']);
+        $this->assertSame('Gudang Pusat', $json['data']['items'][0]['relations']['source_location']['name']);
+        $this->assertSame('Kantor Jakarta', $json['data']['items'][0]['relations']['current_location']['name']);
 
         $this->trackAssetPhotoFiles($asset['id']);
     }
@@ -393,9 +393,9 @@ final class AuthAndAssetWorkflowTest extends ApiFeatureTestCase
         $response->assertStatus(200);
         $json = $this->parseJsonResponse($response);
 
-        $this->assertCount(1, $json['data']);
-        $this->assertArrayHasKey('photo_url', $json['data'][0]);
-        $this->assertNull($json['data'][0]['photo_url']);
+        $this->assertCount(1, $json['data']['items']);
+        $this->assertArrayHasKey('photo_url', $json['data']['items'][0]);
+        $this->assertNull($json['data']['items'][0]['photo_url']);
     }
 
     public function testScannerCannotAccessGlobalAuditLogs(): void

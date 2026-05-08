@@ -176,16 +176,16 @@ class AssetController extends BaseApiController
             return $this->attachAssetRelations($item);
         }, $items);
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Assets fetched',
             $items,
-            ResponseInterface::HTTP_OK,
             [
                 'page'        => $page,
                 'per_page'    => $perPage,
                 'total'       => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 

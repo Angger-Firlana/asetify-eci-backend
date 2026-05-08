@@ -33,9 +33,9 @@ final class UserFlowTest extends ApiFeatureTestCase
 
         $listResponse->assertStatus(200);
         $listJson = $this->parseJsonResponse($listResponse);
-        $this->assertGreaterThanOrEqual(1, count($listJson['data']));
+        $this->assertGreaterThanOrEqual(1, count($listJson['data']['items']));
 
-        $found = array_values(array_filter($listJson['data'], static fn (array $row): bool => (int) $row['id'] === $userId));
+        $found = array_values(array_filter($listJson['data']['items'], static fn (array $row): bool => (int) $row['id'] === $userId));
         $this->assertNotEmpty($found);
 
         $showResponse = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
@@ -76,4 +76,3 @@ final class UserFlowTest extends ApiFeatureTestCase
         $response->assertStatus(403);
     }
 }
-

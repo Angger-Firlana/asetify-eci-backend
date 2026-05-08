@@ -30,6 +30,20 @@ abstract class BaseApiController extends BaseController
         return $this->respond($payload, $status);
     }
 
+    protected function respondPaginated(
+        string $message,
+        array $items,
+        array $meta,
+        int $status = ResponseInterface::HTTP_OK
+    ): ResponseInterface {
+        return $this->respondSuccess(
+            $message,
+            ['items' => array_values($items)],
+            $status,
+            $meta
+        );
+    }
+
     protected function respondError(
         string $message,
         int $status = ResponseInterface::HTTP_BAD_REQUEST,

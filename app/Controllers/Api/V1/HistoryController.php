@@ -64,16 +64,16 @@ class HistoryController extends BaseApiController
             return $item;
         }, $items);
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Scan logs fetched',
             $items,
-            ResponseInterface::HTTP_OK,
             [
                 'page'        => $page,
                 'per_page'    => $perPage,
                 'total'       => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 
@@ -102,16 +102,16 @@ class HistoryController extends BaseApiController
 
         $items = array_map([$this, 'formatAuditLogItem'], $items);
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Asset audit logs fetched',
             $items,
-            ResponseInterface::HTTP_OK,
             [
                 'page'        => $page,
                 'per_page'    => $perPage,
                 'total'       => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 
@@ -160,16 +160,16 @@ class HistoryController extends BaseApiController
 
         $items = array_map([$this, 'formatAuditLogItem'], $items);
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Audit logs fetched',
             $items,
-            ResponseInterface::HTTP_OK,
             [
                 'page'        => $page,
                 'per_page'    => $perPage,
                 'total'       => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 

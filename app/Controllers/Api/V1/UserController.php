@@ -41,16 +41,16 @@ class UserController extends BaseApiController
             ->orderBy('id', 'DESC')
             ->findAll($perPage, $offset);
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Users fetched',
             array_map([$this, 'serializeManagedUser'], $users),
-            ResponseInterface::HTTP_OK,
             [
                 'page'        => $page,
                 'per_page'    => $perPage,
                 'total'       => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 

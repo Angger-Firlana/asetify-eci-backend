@@ -225,17 +225,17 @@ class FolderController extends BaseApiController
             return $item;
         }, $items);
 
-        return $this->respondSuccess(
+        return $this->respondPaginated(
             'Folder assets fetched',
             $items,
-            ResponseInterface::HTTP_OK,
             [
                 'folder' => $folder,
                 'page' => $page,
                 'per_page' => $perPage,
                 'total' => $total,
                 'total_pages' => (int) ceil($total / $perPage),
-            ]
+            ],
+            ResponseInterface::HTTP_OK
         );
     }
 

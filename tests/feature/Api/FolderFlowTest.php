@@ -127,11 +127,11 @@ final class FolderFlowTest extends ApiFeatureTestCase
         $listJson = $this->parseJsonResponse($listResponse);
 
         $this->assertSame($folder['id'], $listJson['meta']['folder']['id']);
-        $this->assertCount(2, $listJson['data']);
-        $this->assertArrayHasKey('current_location_detail', $listJson['data'][0]);
-        $this->assertArrayHasKey('relations', $listJson['data'][0]);
+        $this->assertCount(2, $listJson['data']['items']);
+        $this->assertArrayHasKey('current_location_detail', $listJson['data']['items'][0]);
+        $this->assertArrayHasKey('relations', $listJson['data']['items'][0]);
 
-        $assetIds = array_map(static fn (array $item): int => (int) $item['id'], $listJson['data']);
+        $assetIds = array_map(static fn (array $item): int => (int) $item['id'], $listJson['data']['items']);
         $this->assertContains($assetOne['id'], $assetIds);
         $this->assertContains($assetTwo['id'], $assetIds);
 
