@@ -156,6 +156,7 @@ class AssetController extends BaseApiController
             'current_locations.name AS current_location',
             'current_locations.name AS current_location_name',
             'assets.current_location_detail',
+            'assets.notes',
             'assets.condition_status',
             'primary_photo.id AS photo_id',
         ]);
@@ -217,6 +218,7 @@ class AssetController extends BaseApiController
         if (! $this->validateData($query, [
             'serial_number'       => 'permit_empty|string|max_length[150]',
             'search'              => 'permit_empty|string|max_length[255]',
+            'notes'               => 'permit_empty|string|max_length[255]',
             'asset_category_id'   => 'permit_empty|integer',
             'brand_id'            => 'permit_empty|integer',
             'source_location_id'  => 'permit_empty|integer',
@@ -557,10 +559,12 @@ class AssetController extends BaseApiController
                 ->orLike('current_locations.name', $search)
                 ->orLike('assets.model_name', $search)
                 ->orLike('assets.current_location_detail', $search)
+                ->orLike('assets.notes', $search)
                 ->groupEnd();
         }
 
         $this->applyExactFilter($builder, 'serial_number', 'assets.serial_number');
+        $this->applyExactFilter($builder, 'notes', 'assets.notes');
         $this->applyExactFilter($builder, 'asset_category_id', 'assets.asset_category_id');
         $this->applyExactFilter($builder, 'brand_id', 'assets.brand_id');
         $this->applyExactFilter($builder, 'source_location_id', 'assets.source_location_id');
